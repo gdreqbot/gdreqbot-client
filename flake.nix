@@ -13,7 +13,7 @@
   } @ inputs:
     flake-utils.lib.eachDefaultSystem (
       system: let
-        pkgs = import nixpkgs {inherit system;};
+        pkgs = import nixpkgs { inherit system; };
         fhs = pkgs.buildFHSEnv {
           name = "electron-fhs-shell";
           targetPkgs = pkgs:
@@ -41,16 +41,19 @@
               udev
               twitch-cli
               yarn
-            ])
-            ++ (with pkgs.xorg; [
-              libXcomposite
-              libXdamage
-              libXext
-              libXfixes
-              libXrandr
-              libX11
-              xcbutil
+            ] ++ [ # xorg stuff
+              libxcomposite
+              libxdamage
+              libxext
+              libxfixes
+              libxrandr
+              libx11
+              libxcb-util
               libxcb
+            ] ++ [ # distro packaging
+              dpkg
+              fakeroot
+              rpm
             ]);
 
             # runScript = "pnpm dev";
@@ -60,5 +63,3 @@
       }
     );
 }
-
-
