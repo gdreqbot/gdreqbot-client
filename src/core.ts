@@ -1,23 +1,29 @@
 import { RefreshingAuthProvider } from "@twurple/auth";
-import { ChatClient, ChatClientOptions } from "@twurple/chat";
 import fs, { unlink } from "fs";
-import { Server } from "http";
-import MapDB from "@galaxy05/map.db";
-import dotenv from "dotenv";
-dotenv.config({ quiet: true });
-
-import BaseCommand from "./structs/BaseCommand";
-import CommandLoader from "./modules/CommandLoader";
 import Logger from "./modules/Logger";
-import Database from "./modules/Database";
-import Request from "./modules/Request";
 import config from "./config";
+import Gdreqbot from "./structs/Bot";
+
 import PermLevels from "./structs/PermLevels";
 import { Blacklist } from "./datasets/blacklist";
 import { Perm } from "./datasets/perms";
-import Dashboard from "./server";
 import { User } from "./structs/user";
 import { Settings } from "./datasets/settings";
+
+import { app, BrowserWindow } from "electron";
+
+const createWindow = () => {
+    const win = new BrowserWindow({
+        width: 800,
+        height: 600
+    });
+
+    win.loadURL("https://gdreqbot.ddns.net");
+}
+
+app.whenReady().then(() => {
+    createWindow();
+});
 
 const tokenData = JSON.parse(fs.readFileSync(`./tokens.${config.botId}.json`, "utf-8"));
 const authProvider = new RefreshingAuthProvider({
@@ -33,53 +39,9 @@ authProvider.onRefresh((userId, newTokenData) => {
     new Logger().log("Refreshing token...");
 });
 
-class Gdreqbot extends ChatClient {
-    commands: Map<string, BaseCommand>;
-    cooldowns: Map<string, Map<string, number>>;
-    cmdLoader: CommandLoader;
-    logger: Logger;
-    db: Database;
-    req: Request;
-    config: typeof config;
-    server: Server;
-    blacklist: MapDB;
-
-    constructor(options: ChatClientOptions) {
-        super(options);
-
-        this.commands = new Map();
-        this.cooldowns = new Map();
-        this.cmdLoader = new CommandLoader();
-        this.logger = new Logger();
-        this.db = new Database("data.db");
-        this.req = new Request();
-        this.config = config;
-        this.blacklist = new MapDB("blacklist.db");
-    }
-}
-
-// ugliest workaround ever
-let channels: User[] = [];
-export const channelsdb = new MapDB("channels.db");
-
-let updateUsers: User[] = [];
-export const updatedb = new MapDB("update.db");
-
-if (channelsdb.get("channels")) {
-    channels = channelsdb.get("channels");
-} else {
-    channelsdb.set("channels", []).then(() => console.log("channels db setup"));
-}
-
-if (updatedb.get("updateUsers")) {
-    updateUsers = updatedb.get("updateUsers");
-} else {
-    updatedb.set("updateUsers", []).then(() => console.log("update db setup"));
-}
-
 const client = new Gdreqbot({
     authProvider,
-    channels: channels.map(c => c.userName)
+    channels: ["galaxyvinci05"]
 });
 
 const cmdFiles = fs.readdirSync("./dist/commands/").filter(f => f.endsWith(".js"));
@@ -95,7 +57,6 @@ client.connect();
 
 client.onConnect(async () => {
     await client.db.init();
-    await new Dashboard().run(client);
 
     try {
         const { channel, timestamp } = require("../reboot.json");
@@ -105,21 +66,11 @@ client.onConnect(async () => {
     } catch {}
 
     client.logger.log("Ready");
-    client.logger.log(`Joining ${channelsdb.get("channels").length} channels.`);
+    client.logger.log(`Joining <channel>.`);
 });
 
 client.onJoinFailure(async (channel, reason) => {
-    let channels: User[] = channelsdb.get("channels");
-    let idx = channels.findIndex(c => c.userName == channel);
-    if (idx == -1) return;
-
-    let channelId = channels[idx].userId;
-
-    await client.db.deleteAll({ channelId, channelName: channel });
-
-    channels.splice(idx, 1);
-    await channelsdb.set("channels", channels);
-    client.logger.log(`←   Channel left: ${channel} (${reason})`);
+    // todo
 });
 
 client.onMessage(async (channel, user, text, msg) => {
@@ -184,5 +135,3 @@ client.onMessage(async (channel, user, text, msg) => {
         console.error(e);
     }
 });
-
-export default Gdreqbot;

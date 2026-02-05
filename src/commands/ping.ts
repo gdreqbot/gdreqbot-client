@@ -1,5 +1,5 @@
 import { ChatMessage } from "@twurple/chat";
-import Gdreqbot from "../core";
+import Gdreqbot from "../structs/Bot";
 import BaseCommand from "../structs/BaseCommand";
 
 export = class PingCommand extends BaseCommand {

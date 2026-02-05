@@ -1,5 +1,5 @@
 import { ChatMessage } from "@twurple/chat";
-import Gdreqbot from "../core";
+import Gdreqbot from "../structs/Bot";
 import { ResCode } from "../modules/Request";
 import BaseCommand from "../structs/BaseCommand";
 import { LevelData } from "../datasets/levels";

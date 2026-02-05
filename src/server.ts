@@ -12,7 +12,7 @@ import multer from "multer";
 import moment from "moment";
 import "moment-duration-format";
 import fs from "fs";
-import Gdreqbot, { channelsdb } from './core';
+import Gdreqbot from './structs/Bot';
 import { User } from "./structs/user";
 import { Settings } from "./datasets/settings";
 import { Perm } from "./datasets/perms";
@@ -65,28 +65,28 @@ export = class {
                     return done(null, false);
                 }
 
-                let channels: User[] = channelsdb.get("channels");
-                let channel: User = channels.find(c => c.userId == channelId);
+                //let channels: User[] = channelsdb.get("channels");
+                //let channel: User = channels.find(c => c.userId == channelId);
 
-                await client.join(channelName);
+                //await client.join(channelName);
 
-                if (!channel) {
-                    // push to channels db
-                    channels.push({ userId: channelId, userName: channelName });
-                    
-                    await channelsdb.set("channels", channels);
-                    await client.db.setDefault({ channelId, channelName });
+                //if (!channel) {
+                //    // push to channels db
+                //    channels.push({ userId: channelId, userName: channelName });
+                //    
+                //    await channelsdb.set("channels", channels);
+                //    await client.db.setDefault({ channelId, channelName });
 
-                    await client.say(channelName, "Thanks for adding gdreqbot! You can get a list of commands by typing !help");
-                    client.logger.log(`→   New channel joined: ${channelName}`);
-                } else if (channel.userName != channelName) {
-                    let idx = channels.findIndex(c => c.userId == channelId);
-                    channels[idx].userName = channelName;
+                //    await client.say(channelName, "Thanks for adding gdreqbot! You can get a list of commands by typing !help");
+                //    client.logger.log(`→   New channel joined: ${channelName}`);
+                //} else if (channel.userName != channelName) {
+                //    let idx = channels.findIndex(c => c.userId == channelId);
+                //    channels[idx].userName = channelName;
 
-                    await channelsdb.set("channels", channels);
-                } else {
-                    client.logger.log(`Authenticated: ${channelName}`);
-                }
+                //    await channelsdb.set("channels", channels);
+                //} else {
+                //    client.logger.log(`Authenticated: ${channelName}`);
+                //}
 
                 let user: User = {
                     userId: profile.id,
@@ -101,12 +101,12 @@ export = class {
         });
 
         passport.deserializeUser((userId, done) => {
-            let channels: User[] = channelsdb.get("channels");
-            let user = channels.find(c => c.userId == userId);
-            if (!user)
-                return done(null, false);
+            //let channels: User[] = channelsdb.get("channels");
+            //let user = channels.find(c => c.userId == userId);
+            //if (!user)
+            //    return done(null, false);
 
-            done(null, user);
+            //done(null, user);
         });
 
         const renderView = (req: Request, res: Response, view: string, data: any = {}) => {
@@ -148,75 +148,6 @@ export = class {
 
         server.get('/auth/error', (req, res) => {
             renderView(req, res, 'autherror');
-        });
-
-        server.get('/stats', (req, res) => {
-            let memUsage = `${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB`;
-            let dbUsage = `${((fs.statSync('./data/data.db').size) / 1024).toFixed(2)} KB`;
-            let joined = channelsdb.get("channels").length;
-            let uptime = moment.duration(process.uptime() * 1000).format(" D [days], H [hrs], m [mins], s [secs]");
-            let twVersion = (require('../package.json').dependencies["@twurple/chat"]).substr(1);
-            let exprVersion = (require('../package.json').dependencies["express"]).substr(1);
-            let nodeVersion = process.version;
-            let pkgVersion = require('../package.json').version;
-
-            let totalReq = 0;
-            channelsdb.get("channels").forEach((channel: User) => {
-                let data: LevelData[] = client.db.load("levels", { channelId: channel.userId })?.levels;
-                if (data) data.forEach(() => totalReq++);
-            });
-
-            res.render('stats', {
-                memUsage,
-                dbUsage,
-                joined,
-                uptime,
-                twVersion,
-                exprVersion,
-                nodeVersion,
-                pkgVersion,
-                totalReq
-            });
-        });
-
-        server.get('/commands', (req, res) => {
-            res.render('commands', {
-                cmds: client.commands.values()
-                    .filter(cmd => cmd.config.permLevel < PermLevels.DEV)
-                    .map(cmd => {
-                        return {
-                            name: cmd.info.name,
-                            desc: cmd.info.description,
-                            args: cmd.info.args,
-                            aliases: cmd.config.aliases,
-                            permLevel: this.normalize(PermLevels[cmd.config.permLevel]),
-                            supportsPrivilege: cmd.config.supportsPrivilege,
-                            supportsSilent: cmd.config.supportsSilent,
-                            privilegeDesc: cmd.info.privilegeDesc,
-                            privilegeArgs: cmd.info.privilegeArgs
-                        };
-                })
-            });
-        });
-
-        server.get('/terms-of-service', (req, res) => {
-            renderView(req, res, 'terms-of-service');
-        });
-
-        server.get('/privacy-policy', (req, res) => {
-            renderView(req, res, 'privacy-policy');
-        });
-
-        server.get('/faq', (req, res) => {
-            renderView(req, res, 'faq');
-        });
-
-        server.get('/updates', (req, res) => {
-            renderView(req, res, 'updates');
-        });
-
-        server.get('/versions', (req, res) => {
-            renderView(req, res, 'versions');
         });
 
         server.get('/dashboard', (req, res) => {
@@ -550,27 +481,27 @@ export = class {
         });
 
         server.get('/dashboard/:user/part', this.checkAuth, async (req, res, next) => {
-            let userId = (req.user as User).userId;
-            let userName = (req.user as User).userName;
+            //let userId = (req.user as User).userId;
+            //let userName = (req.user as User).userName;
 
-            if (userId != req.params.user)
-                return res.status(403).send('Unauthorized');
+            //if (userId != req.params.user)
+            //    return res.status(403).send('Unauthorized');
 
-            let channels: User[] = channelsdb.get("channels");
-            let user = channels.find(c => c.userId == userId);
+            //let channels: User[] = channelsdb.get("channels");
+            //let user = channels.find(c => c.userId == userId);
 
-            if (user) {
-                try {
-                    await client.commands.get('part').run(client, { channelId: userId } as any, userName, [], { auto: true });  // yes, I feel shame in doing this
-                    res.redirect('/');
-                } catch (err) {
-                    client.logger.error('', err);
-                    renderView(req, res, 'error');
-                }
-            }
+            //if (user) {
+            //    try {
+            //        await client.commands.get('part').run(client, { channelId: userId } as any, userName, [], { auto: true });  // yes, I feel shame in doing this
+            //        res.redirect('/');
+            //    } catch (err) {
+            //        client.logger.error('', err);
+            //        renderView(req, res, 'error');
+            //    }
+            //}
         });
 
-        client.server = server.listen(parseInt(port.toString()), hostname, () => client.logger.log(`Server listening on http(s)://${hostname}:${port}`));
+        server.listen(parseInt(port.toString()), hostname, () => client.logger.log(`Server listening on http(s)://${hostname}:${port}`));
     }
 
     checkAuth(req: Request, res: Response, next: NextFunction) {

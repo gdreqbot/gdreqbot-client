@@ -1,23 +1,24 @@
 {
-  "name": "gdreqbot",
+  "name": "gdreqbot-client",
   "version": "4.0.1",
   "description": "Early stage Geometry Dash level requests",
   "main": "dist/core.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "deploy": "tsc && node ."
+    "build": "tsc",
+    "deploy": "tsc && electron ."
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/GalaxyVinci05/gdreqbot.git"
+    "url": "git+https://github.com/gdreqbot/gdreqbot-client.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "GalaxyVinci05",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/GalaxyVinci05/gdreqbot/issues"
+    "url": "https://github.com/gdreqbot/gdreqbot-client/issues"
   },
-  "homepage": "https://github.com/GalaxyVinci05/gdreqbot#readme",
+  "homepage": "https://github.com/gdreqbot/gdreqbot-client#readme",
   "dependencies": {
     "@galaxy05/map.db": "^1.2.2",
     "@twurple/api": "^8.0.3",
@@ -43,9 +44,10 @@
     "@types/express-session": "^1.18.2",
     "@types/moment-duration-format": "^2.2.7",
     "@types/multer": "^2.0.0",
-    "@types/node": "^25.0.10",
     "@types/passport": "^1.0.17",
     "@types/passport-twitch-latest": "^1.0.5",
-    "@types/superagent": "^8.1.9"
+    "@types/superagent": "^8.1.9",
+    "electron": "40.1.0",
+    "typescript": "^5.9.3"
   }
 }

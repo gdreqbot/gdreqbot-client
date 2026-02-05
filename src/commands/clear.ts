@@ -1,4 +1,4 @@
-import Gdreqbot from "../core";
+import Gdreqbot from "../structs/Bot";
 import BaseCommand from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";

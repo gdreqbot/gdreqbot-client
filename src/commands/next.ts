@@ -1,5 +1,5 @@
 import { ChatMessage } from "@twurple/chat";
-import Gdreqbot, { updatedb } from "../core";
+import Gdreqbot from "../structs/Bot";
 import { ResCode } from "../modules/Request";
 import BaseCommand from "../structs/BaseCommand";
 import PermLevels from "../structs/PermLevels";
@@ -21,17 +21,17 @@ export = class NextCommand extends BaseCommand {
     async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { auto: boolean, silent: boolean }): Promise<any> {
         let replyTo = opts.auto ? null : msg;
 
-        if (!opts.auto) {
-            let updateUsers: User[] = updatedb.get("updateUsers");
-            let updateUser: User = updateUsers.find((u: User) => u.userId == msg.userInfo.userId);
-            if (!updateUser) {
-                await client.say(channel, `Hey! There is a requests dashboard now: ${process.env.URL}/dashboard || You can still use commands if you wish (this message won't appear anymore)`, { replyTo });
-                updateUsers.push({ userId: msg.channelId, userName: channel });
-                await updatedb.set("updateUsers", updateUsers);
-                client.logger.log(`Update note sent in channel: ${channel}`);
-                return;
-            }
-        }
+        //if (!opts.auto) {
+        //    let updateUsers: User[] = updatedb.get("updateUsers");
+        //    let updateUser: User = updateUsers.find((u: User) => u.userId == msg.userInfo.userId);
+        //    if (!updateUser) {
+        //        await client.say(channel, `Hey! There is a requests dashboard now: ${process.env.URL}/dashboard || You can still use commands if you wish (this message won't appear anymore)`, { replyTo });
+        //        updateUsers.push({ userId: msg.channelId, userName: channel });
+        //        await updatedb.set("updateUsers", updateUsers);
+        //        client.logger.log(`Update note sent in channel: ${channel}`);
+        //        return;
+        //    }
+        //}
 
         let res = await client.req.next(client, msg.channelId);
 
