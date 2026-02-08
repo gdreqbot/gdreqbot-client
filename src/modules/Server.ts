@@ -29,6 +29,7 @@ export default class {
     app: Express;
     client: Gdreqbot;
     server: Server;
+    port: number;
 
     constructor(client: Gdreqbot) {
         this.app = express();
@@ -36,7 +37,7 @@ export default class {
 
         const server = this.app;
 
-        server.use('/public', express.static(path.resolve(__dirname, '../web/public')));
+        server.use('/public', express.static(path.resolve(__dirname, '../../web/public')));
         server.use(express.json());
         server.use(express.urlencoded({ extended: false }));
         server.use(
@@ -52,7 +53,7 @@ export default class {
         server.use(passport.initialize());
         server.use(passport.session());
         server.use(bodyParser.json());
-        server.set('views', path.join(__dirname, '../web/views'));
+        server.set('views', path.join(__dirname, '../../web/views'));
 
         server.set('view engine', 'ejs');
 
@@ -94,6 +95,7 @@ export default class {
                 //} else {
                 //    client.logger.log(`Authenticated: ${channelName}`);
                 //}
+                client.logger.log(`Authenticated: ${channelName}`);
 
                 let user: User = {
                     userId: profile.id,
@@ -185,7 +187,7 @@ export default class {
                 bl,
                 page: "req",
                 hide_note: sets.hide_note,
-                url: process.env.URL
+                url: `http://127.0.0.1:${this.port}`
             });
         });
 
@@ -289,7 +291,7 @@ export default class {
                 bl,
                 page: "set",
                 hide_note: sets.hide_note,
-                url: process.env.URL
+                url: `http://127.0.0.1:${this.port}`
             });
         });
 
@@ -515,6 +517,7 @@ export default class {
                 let port = (this.server.address() as AddressInfo).port;
 
                 this.client.logger.log(`Server listening on http://127.0.0.1:${port}`);
+                this.port = port;
                 resolve({
                     port,
                     close: () => this.close()

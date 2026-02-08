@@ -327,7 +327,6 @@
         </section>
 
         <script>
-            const url = "<%= url %>";
             const userId = "<%= user.userId %>";
 
             function copyMsg(copyButton) {
@@ -345,7 +344,7 @@
 
             document.querySelector('#hide')?.addEventListener('click', async () => {
                 try {
-                    await fetch(`${url}/dashboard/${userId}/hide`, {
+                    await fetch(`/dashboard/${userId}/hide`, {
                         method: "GET",
                     });
 
@@ -370,7 +369,7 @@
                 formData.append('formType', type);
 
                 try {
-                    await fetch(`${url}/dashboard/${userId}/requests`, {
+                    await fetch(`/dashboard/${userId}/requests`, {
                         method: "POST",
                         body: formData
                     });

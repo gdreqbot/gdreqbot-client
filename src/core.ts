@@ -34,7 +34,9 @@ const server = new Server(client);
 const createWindow = (port: string) => {
     const win = new BrowserWindow({
         width: 800,
-        height: 600
+        height: 600,
+        icon: "./assets/gdreqbot",
+        autoHideMenuBar: true
     });
 
     win.loadURL(`http://127.0.0.1:${port}`);
