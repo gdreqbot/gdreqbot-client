@@ -1,6 +1,4 @@
 export const defaultValues: Settings = {
-    channelId: "",
-    channelName: "",
     req_enabled: false,
     prefix: "!",
     max_levels_per_user: -1,
@@ -12,8 +10,6 @@ export const defaultValues: Settings = {
 }
 
 export interface Settings {
-    channelId: string;
-    channelName: string;
     req_enabled?: boolean;
     prefix?: string;
     max_levels_per_user?: number;

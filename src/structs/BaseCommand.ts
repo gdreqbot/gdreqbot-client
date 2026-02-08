@@ -1,5 +1,5 @@
 import { ChatMessage } from "@twurple/chat";
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import PermLevels from "./PermLevels";
 
 class BaseCommand {
@@ -24,7 +24,7 @@ class BaseCommand {
         this.config = { aliases, cooldown, enabled, permLevel, supportsPrivilege, supportsSilent };
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args?: string[], opts?: { userPerms?: PermLevels, privilegeMode?: boolean, auto?: boolean, silent?: boolean }) {}
+    async run(client: Gdreqbot, msg: ChatMessage, args?: string[], opts?: { userPerms?: PermLevels, privilegeMode?: boolean, auto?: boolean, silent?: boolean }): Promise<string|void> {}
 }
 
 interface Info {

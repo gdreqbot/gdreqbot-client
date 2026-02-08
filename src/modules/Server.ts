@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config({ quiet: true });
 
-import express, { NextFunction, Request, Response } from "express";
+import express, { NextFunction, Request, Response, Express } from "express";
 import session from "express-session";
 import passport from "passport";
 import { Strategy as twitchStrategy } from "passport-twitch-latest";
@@ -12,23 +12,30 @@ import multer from "multer";
 import moment from "moment";
 import "moment-duration-format";
 import fs from "fs";
-import Gdreqbot from './structs/Bot';
-import { User } from "./structs/user";
-import { Settings } from "./datasets/settings";
-import { Perm } from "./datasets/perms";
-import PermLevels from "./structs/PermLevels";
-import BaseCommand from "./structs/BaseCommand";
-import { Blacklist } from "./datasets/blacklist";
-import { getUser } from "./apis/twitch";
-import { LevelData } from "./datasets/levels";
-import { getLevel } from "./apis/gd";
+import Gdreqbot from '../modules/Bot';
+import { User } from "../structs/user";
+import { Settings } from "../datasets/settings";
+import { Perm } from "../datasets/perms";
+import PermLevels from "../structs/PermLevels";
+import BaseCommand from "../structs/BaseCommand";
+import { Blacklist } from "../datasets/blacklist";
+import { getUser } from "../apis/twitch";
+import { LevelData } from "../datasets/levels";
+import { getLevel } from "../apis/gd";
+import { AddressInfo } from "net";
+import { Server } from "http";
 
-const server = express();
-const port = process.env.PORT || 80;
-const hostname = process.env.HOSTNAME || 'localhost';
+export default class {
+    app: Express;
+    client: Gdreqbot;
+    server: Server;
 
-export = class {
-    async run(client: Gdreqbot) {
+    constructor(client: Gdreqbot) {
+        this.app = express();
+        this.client = client;
+
+        const server = this.app;
+
         server.use('/public', express.static(path.resolve(__dirname, '../web/public')));
         server.use(express.json());
         server.use(express.urlencoded({ extended: false }));
@@ -164,11 +171,11 @@ export = class {
             if (userId != req.params.user)
                 return res.status(403).send('Unauthorized');
 
-            await client.db.setDefault({ channelId: userId, channelName: userName });
+            //await client.db.setDefault({ channelId: userId, channelName: userName });
 
-            let levels: LevelData[] = client.db.load("levels", { channelId: userId }).levels;
-            let sets: Settings = client.db.load("settings", { channelId: userId });
-            let bl: Blacklist = client.db.load("blacklist", { channelId: userId });
+            let levels: LevelData[] = client.db.load("levels").levels;
+            let sets: Settings = client.db.load("settings");
+            let bl: Blacklist = client.db.load("blacklist");
 
             res.render('dashboard/requests', {
                 isAuthenticated: true,
@@ -189,9 +196,9 @@ export = class {
             if (userId != req.params.user)
                 return res.status(403).send('Unauthorized');
 
-            let levels: LevelData[] = client.db.load("levels", { channelId: userId }).levels;
-            let sets: Settings = client.db.load("settings", { channelId: userId });
-            let bl: Blacklist = client.db.load("blacklist", { channelId: userId });
+            let levels: LevelData[] = client.db.load("levels").levels;
+            let sets: Settings = client.db.load("settings");
+            let bl: Blacklist = client.db.load("blacklist");
 
             let args: string[] = [];
             let cmd: BaseCommand;
@@ -213,7 +220,7 @@ export = class {
                         notes: null
                     });
 
-                await client.db.save("blacklist", { channelId: userId }, bl);
+                await client.db.save("blacklist", bl);
                 client.logger.log(`(auto) Blacklisted ${type} in channel: ${userName}`);
                 return res.status(200).json({ success: true });
             } else if (req.body.formType.startsWith("remove")) {
@@ -228,7 +235,7 @@ export = class {
             }
 
             try {
-                await cmd.run(client, { channelId: userId } as any, userName, args, { auto: true, silent: sets.silent_mode });
+                await cmd.run(client, { channelId: userId } as any, args, { auto: true, silent: sets.silent_mode });
                 client.logger.log(`(auto) Running command: ${cmd.info.name} in channel: ${userName}`);
             } catch (e) {
                 client.say(userName, `An error occurred running command: ${cmd.info.name}. If the issue persists, please contact the developer.`);
@@ -245,11 +252,11 @@ export = class {
             if (userId != req.params.user)
                 return res.status(403).send('Unauthorized');
 
-            await client.db.setDefault({ channelId: userId, channelName: userName });
+            //await client.db.setDefault({ channelId: userId, channelName: userName });
 
-            let sets: Settings = client.db.load("settings", { channelId: userId });
-            let perms: Perm[] = client.db.load("perms", { channelId: userId }).perms;
-            let bl: Blacklist = client.db.load("blacklist", { channelId: userId });
+            let sets: Settings = client.db.load("settings");
+            let perms: Perm[] = client.db.load("perms").perms;
+            let bl: Blacklist = client.db.load("blacklist");
 
             let cmdData: any = [];
             let setData: any = this.getSettings(sets);
@@ -296,13 +303,13 @@ export = class {
             switch (req.body.formType) {
                 case "settings": {
                     let sets = this.parseSettings(req.body);
-                    await client.db.save("settings", { channelId: userId }, sets);
+                    await client.db.save("settings", sets);
                     client.logger.log(`Dashboard: updated settings for channel: ${userName}`);
                     break;
                 }
 
                 case "perms": {
-                    let perms: Perm[] = client.db.load("perms", { channelId: userId }).perms;
+                    let perms: Perm[] = client.db.load("perms").perms;
                     let filtered = this.filterPerms(req.body, perms, client.commands);
 
                     filtered.forEach(perm => {
@@ -320,13 +327,13 @@ export = class {
                             if (!toDelete) perms.push(perm);
                     });
 
-                    await client.db.save("perms", { channelId: userId }, { perms });
+                    await client.db.save("perms", { perms });
                     client.logger.log(`Dashboard: updated perms for channel: ${userName}`);
                     break;
                 }
 
                 case "blacklist-users": {
-                    let userBl: User[] = client.db.load("blacklist", { channelId: userId }).users;
+                    let userBl: User[] = client.db.load("blacklist").users;
                     let invalid: string[] = [];
 
                     switch (req.body.action) {
@@ -371,7 +378,7 @@ export = class {
                         }
                     }
 
-                    await client.db.save("blacklist", { channelId: userId }, { users: userBl });
+                    await client.db.save("blacklist", { users: userBl });
 
                     if (invalid.length > 0) {
                         res.status(400).json({
@@ -386,7 +393,7 @@ export = class {
                 }
 
                 case "blacklist-levels": {
-                    let levelBl: LevelData[] = client.db.load("blacklist", { channelId: userId }).levels;
+                    let levelBl: LevelData[] = client.db.load("blacklist").levels;
                     let invalid: string[] = [];
 
                     switch (req.body.action) {
@@ -433,7 +440,7 @@ export = class {
                         }
                     }
 
-                    await client.db.save("blacklist", { channelId: userId }, { levels: levelBl });
+                    await client.db.save("blacklist", { levels: levelBl });
 
                     if (invalid.length > 0) {
                         res.status(400).json({
@@ -463,10 +470,10 @@ export = class {
             if (userId != req.params.user)
                 return res.status(403).send('Unauthorized');
             
-            await client.db.setDefault({ channelId: userId, channelName: userName });
+            //await client.db.setDefault({ channelId: userId, channelName: userName });
 
-            let sets: Settings = client.db.load("settings", { channelId: userId });
-            if (!sets.hide_note) await client.db.save("settings", { channelId: userId }, { hide_note: true });
+            let sets: Settings = client.db.load("settings");
+            if (!sets.hide_note) await client.db.save("settings", { hide_note: true });
 
             res.status(200).json({ success: true });
         });
@@ -500,18 +507,39 @@ export = class {
             //    }
             //}
         });
-
-        server.listen(parseInt(port.toString()), hostname, () => client.logger.log(`Server listening on http(s)://${hostname}:${port}`));
     }
 
-    checkAuth(req: Request, res: Response, next: NextFunction) {
+    run(): Promise<ServerOutput> {
+        return new Promise((resolve, reject) => {
+            this.server = this.app.listen(0, '127.0.0.1', () => {
+                let port = (this.server.address() as AddressInfo).port;
+
+                this.client.logger.log(`Server listening on http://127.0.0.1:${port}`);
+                resolve({
+                    port,
+                    close: () => this.close()
+                });
+            });
+
+            this.server.on('error', reject);
+        });
+    }
+
+    close() {
+        if (this.server) {
+            this.server.close();
+            this.server = null;
+        }
+    }
+
+    private checkAuth(req: Request, res: Response, next: NextFunction) {
         if (req.isAuthenticated())
             return next();
 
         res.redirect('/');
     }
 
-    getSettings(sets: any) {
+    private getSettings(sets: any) {
         const { defaultValues } = require('./datasets/settings');
         let obj: any = {};
 
@@ -533,7 +561,7 @@ export = class {
         return obj;
     }
 
-    parseSettings(data: any) {
+    private parseSettings(data: any) {
         let parsed: any = {};
 
         for (let [key, value] of Object.entries(data)) {
@@ -553,7 +581,7 @@ export = class {
         return parsed;
     }
 
-    filterPerms(data: any, perms: Perm[], cmds: Map<string, BaseCommand>) {
+    private filterPerms(data: any, perms: Perm[], cmds: Map<string, BaseCommand>) {
         let filtered: Perm[] = [];
 
         for (let [key, value] of Object.entries(data)) {
@@ -576,8 +604,13 @@ export = class {
         return filtered;
     }
 
-    normalize(str: string) {
+    private normalize(str: string) {
         let normalized = str.toLowerCase();
         return normalized.charAt(0).toUpperCase() + normalized.slice(1);
     }
+}
+
+export interface ServerOutput {
+    port: number;
+    close: Function;
 }

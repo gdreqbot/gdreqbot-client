@@ -1,4 +1,4 @@
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import BaseCommand from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";
@@ -17,34 +17,26 @@ export = class SetCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[]): Promise<any> {
-        let sets: Settings = client.db.load("settings", { channelId: msg.channelId });
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<string> {
+        let sets: Settings = client.db.load("settings");
 
         if (!args?.length)
-            return client.say(channel, `Settings: ${Object.entries(sets).slice(2).filter(s => s[0] != "first_time").map(s => `${s[0]}:${s[1]}`).join(" - ")}`);
+            return `Settings: ${Object.entries(sets).slice(2).filter(s => s[0] != "first_time").map(s => `${s[0]}:${s[1]}`).join(" - ")}`;
 
-        let res = await client.req.set(client, msg.channelId, args[0], args[1]);
+        let res = await client.req.set(client, args[0], args[1]);
 
         switch (res.status) {
-            case ResCode.INVALID_KEY: {
-                client.say(channel, "Error: invalid setting", { replyTo: msg });
-                break;
-            }
+            case ResCode.INVALID_KEY:
+                return "Error: invalid setting";
 
-            case ResCode.INVALID_VALUE: {
-                client.say(channel, "Error: invalid value", { replyTo: msg });
-                break;
-            }
+            case ResCode.INVALID_VALUE:
+                return "Error: invalid value";
 
-            case ResCode.INVALID_RANGE: {
-                client.say(channel, "Error: value must be either -1 or greater than 0");
-                break;
-            }
+            case ResCode.INVALID_RANGE:
+                return "Error: value must be either -1 or greater than 0";
 
-            case ResCode.OK: {
-                client.say(channel, `Set '${args[0]}' to '${args[1]}'`, { replyTo: msg });
-                break;
-            }
+            case ResCode.OK:
+                return `Set '${args[0]}' to '${args[1]}'`;
         }
     }
 }

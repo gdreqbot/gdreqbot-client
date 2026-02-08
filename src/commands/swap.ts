@@ -1,4 +1,4 @@
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import BaseCommand from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";
@@ -17,8 +17,8 @@ export = class SwapCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[]): Promise<any> {
-        if (args?.length < 2) return client.say(channel, "Kappa You need to specify two levels to swap. (Specify both in quotes if a level name has a space)", { replyTo: msg });
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<string> {
+        if (args?.length < 2) return "Kappa You need to specify two levels to swap. (Specify both in quotes if a level name has a space)";
         let query: string[] = [];
         let separator = "";
 
@@ -35,22 +35,17 @@ export = class SwapCommand extends BaseCommand {
             query = args;
         }
 
-        let res = await client.req.swapLevels(client, msg.channelId, query[0], query[1]);
+        let res = await client.req.swapLevels(client, query[0], query[1]);
 
         switch (res.status) {
-            case ResCode.EMPTY: {
-                client.say(channel, "Kappa The queue is empty.", { replyTo: msg });
-                break;
-            }
+            case ResCode.EMPTY:
+                return "Kappa The queue is empty.";
 
-            case ResCode.NOT_FOUND: {
-                client.say(channel, `Kappa The level '${query[res.query]}' is not in the queue.`, { replyTo: msg });
-                break;
-            }
+            case ResCode.NOT_FOUND:
+                return `Kappa The level '${query[res.query]}' is not in the queue.`;
 
-            case ResCode.OK: {
-                client.say(channel, `PogChamp Swapped '${res.levels[0].level.name}' (${res.levels[0].level.id}) at position ${res.levels[0].pos+1} with '${res.levels[1].level.name}' (${res.levels[1].level.id}) at position ${res.levels[1].pos+1}`)
-            }
+            case ResCode.OK:
+                return `PogChamp Swapped '${res.levels[0].level.name}' (${res.levels[0].level.id}) at position ${res.levels[0].pos+1} with '${res.levels[1].level.name}' (${res.levels[1].level.id}) at position ${res.levels[1].pos+1}`
         }
     }
 }

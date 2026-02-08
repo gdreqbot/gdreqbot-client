@@ -1,14 +1,10 @@
 import { User } from "../structs/user";
 
 export const defaultValues: Levels = {
-    channelId: "",
-    channelName: "",
     levels: []
 }
 
 export interface Levels {
-    channelId: string;
-    channelName: string;
     levels: LevelData[];
 }
 

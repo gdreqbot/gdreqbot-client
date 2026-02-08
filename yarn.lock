@@ -347,9 +347,9 @@
   optionalDependencies:
     global-agent "^3.0.0"
 
-"@electron/node-gyp@git+https://github.com/electron/node-gyp.git#06b29aafb7708acef8b3669835c8a7857ebc92d2":
+"@electron/node-gyp@https://github.com/electron/node-gyp#06b29aafb7708acef8b3669835c8a7857ebc92d2":
   version "10.2.0-electron.1"
-  resolved "git+https://github.com/electron/node-gyp.git#06b29aafb7708acef8b3669835c8a7857ebc92d2"
+  resolved "https://github.com/electron/node-gyp#06b29aafb7708acef8b3669835c8a7857ebc92d2"
   dependencies:
     env-paths "^2.2.0"
     exponential-backoff "^3.1.1"
@@ -454,10 +454,10 @@
     minimist "^1.2.8"
     postject "^1.0.0-alpha.6"
 
-"@galaxy05/map.db@^1.2.2":
-  version "1.2.2"
-  resolved "https://registry.yarnpkg.com/@galaxy05/map.db/-/map.db-1.2.2.tgz#5890b94c2edbf528e4fe753cc22a11dad7971bee"
-  integrity sha512-sZ5voxJSkKhiz/nYBSI1RYUrSS/Em2uDP8IR57+cOtd2j4ffWz3fH39nzg6y+ntHnAxjDd7/dMgIL/plb56t1g==
+"@galaxy05/map.db@^1.3.0":
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/@galaxy05/map.db/-/map.db-1.3.0.tgz#ce93bee47fcf0f7d72b929be49cc1d980750a268"
+  integrity sha512-nZHQwTq74jlWYj/HsotVnCr4clbsOk0aat0GlXnCA7kTJh82LEO2uVXlCgNzCuwuFioI+MsGNVAE+CBLVLA+8Q==
   dependencies:
     typescript "^5.9.3"
 

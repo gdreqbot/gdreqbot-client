@@ -1,4 +1,4 @@
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import BaseCommand from "../structs/BaseCommand";
 import { ChatMessage } from "@twurple/chat";
 import PermLevels from "../structs/PermLevels";
@@ -14,7 +14,7 @@ export = class GlobalBlCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[]): Promise<any> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<string> {
         let bl: string[];
 
         if (args[0] == "users")
@@ -42,6 +42,6 @@ export = class GlobalBlCommand extends BaseCommand {
         }
 
         await client.blacklist.set(args[0], bl);
-        client.say(channel, `${str} ${args[2] || ""}`);
+        return `${str} ${args[2] || ""}`;
     }
 }

@@ -1,5 +1,5 @@
 import { ChatMessage } from "@twurple/chat";
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import BaseCommand from "../structs/BaseCommand";
 import PermLevels from "../structs/PermLevels";
 
@@ -15,10 +15,9 @@ export = class SilentCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { auto: boolean }): Promise<any> {
-        let toggle = await client.req.toggle(client, msg.channelId, "silent");
-        let replyTo = opts.auto ? null : msg;
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean }): Promise<string> {
+        let toggle = await client.req.toggle(client, "silent");
 
-        client.say(channel, `Silent mode is now ${toggle ? "enabled" : "disabled"}. ${toggle ? "The bot will stop sending any messages in chat." : "The bot will send messages as usual."}`, { replyTo });
+        return `Silent mode is now ${toggle ? "enabled" : "disabled"}. ${toggle ? "The bot will stop sending any messages in chat." : "The bot will send messages as usual."}`;
     }
 }

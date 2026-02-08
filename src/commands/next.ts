@@ -1,5 +1,5 @@
 import { ChatMessage } from "@twurple/chat";
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import { ResCode } from "../modules/Request";
 import BaseCommand from "../structs/BaseCommand";
 import PermLevels from "../structs/PermLevels";
@@ -18,14 +18,12 @@ export = class NextCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { auto: boolean, silent: boolean }): Promise<any> {
-        let replyTo = opts.auto ? null : msg;
-
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean, silent: boolean }): Promise<string> {
         //if (!opts.auto) {
         //    let updateUsers: User[] = updatedb.get("updateUsers");
         //    let updateUser: User = updateUsers.find((u: User) => u.userId == msg.userInfo.userId);
         //    if (!updateUser) {
-        //        await client.say(channel, `Hey! There is a requests dashboard now: ${process.env.URL}/dashboard || You can still use commands if you wish (this message won't appear anymore)`, { replyTo });
+        //        await `Hey! There is a requests dashboard now: ${process.env.URL}/dashboard || You can still use commands if you wish (this message won't appear anymore)`;
         //        updateUsers.push({ userId: msg.channelId, userName: channel });
         //        await updatedb.set("updateUsers", updateUsers);
         //        client.logger.log(`Update note sent in channel: ${channel}`);
@@ -33,23 +31,18 @@ export = class NextCommand extends BaseCommand {
         //    }
         //}
 
-        let res = await client.req.next(client, msg.channelId);
+        let res = await client.req.next(client);
 
         switch (res.status) {
-            case ResCode.EMPTY: {
-                if (!opts.silent && !opts.auto) client.say(channel, "Kappa The queue is empty.", { replyTo });
-                break;
-            }
+            case ResCode.EMPTY:
+                if (!opts.silent && !opts.auto) return "Kappa The queue is empty.";
 
-            case ResCode.ERROR: {
-                client.say(channel, "An error occurred.", { replyTo });
-                break;
-            }
 
-            case ResCode.OK: {
-                if (!opts.silent) client.say(channel, `PogChamp Next ${res.random ? "random " : ""}level: '${res.level.name}' (${res.level.id}) by ${res.level.creator}`, { replyTo });
-                break;
-            }
+            case ResCode.ERROR:
+                return "An error occurred.";
+
+            case ResCode.OK:
+                if (!opts.silent) return `PogChamp Next ${res.random ? "random " : ""}level: '${res.level.name}' (${res.level.id}) by ${res.level.creator}`;
         }
     }
 }

@@ -1,4 +1,4 @@
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import BaseCommand from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";
@@ -19,10 +19,8 @@ export = class RemoveCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { privilegeMode: boolean, auto: boolean, silent: boolean }): Promise<any> {
-        let replyTo = opts.auto ? null : msg;
-
-        let levels: LevelData[] = client.db.load("levels", { channelId: msg.channelId }).levels;
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { privilegeMode: boolean, auto: boolean, silent: boolean }): Promise<string> {
+        let levels: LevelData[] = client.db.load("levels", ).levels;
         let query = "";
         if (opts.privilegeMode) {
             if (args[0])
@@ -32,7 +30,7 @@ export = class RemoveCommand extends BaseCommand {
             let usrLvls = levels.filter(l => l.user.userId == msg.userInfo.userId);
             if (!usrLvls?.length) {
                 if (!opts.silent)
-                    return client.say(channel, "Kappa You don't have any levels in the queue.", { replyTo });
+                    return "Kappa You don't have any levels in the queue.";
                 else
                     return;
             }
@@ -40,28 +38,20 @@ export = class RemoveCommand extends BaseCommand {
             query = usrLvls[usrLvls.length - 1].id;
         }
 
-        let res = await client.req.removeLevel(client, msg.channelId, query);
+        let res = await client.req.removeLevel(client, query);
 
         switch (res.status) {
-            case ResCode.EMPTY: {
-                if (!opts.silent) client.say(channel, "Kappa The queue is empty.", { replyTo });
-                break;
-            }
+            case ResCode.EMPTY:
+                if (!opts.silent) return "Kappa The queue is empty.";
 
-            case ResCode.NOT_FOUND: {
-                if (!opts.silent) client.say(channel, "Kappa That level is not in the queue.", { replyTo });
-                break;
-            }
+            case ResCode.NOT_FOUND:
+                if (!opts.silent) return "Kappa That level is not in the queue.";
 
-            case ResCode.ERROR: {
-                client.say(channel, "An error occurred, please try again. (If the issue persists, please contact the developer)", { replyTo });
-                break;
-            }
+            case ResCode.ERROR:
+                return "An error occurred, please try again. (If the issue persists, please contact the developer)";
 
-            case ResCode.OK: {
-                if (!opts.silent) client.say(channel, `PogChamp Removed '${res.level[0].name}' by ${res.level[0].creator} from the queue.`, { replyTo });
-                break;
-            }
+            case ResCode.OK:
+                if (!opts.silent) return `PogChamp Removed '${res.level[0].name}' by ${res.level[0].creator} from the queue.`;
         }
     }
 }

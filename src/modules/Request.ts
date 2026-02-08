@@ -1,4 +1,4 @@
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import { LevelData } from "../datasets/levels";
 import { User } from "../structs/user";
 import { Settings } from "../datasets/settings";
@@ -15,9 +15,9 @@ class Request {
         };
     }
 
-    async addLevel(client: Gdreqbot, channelId: string, user: User, query: string, notes?: string) {
-        let sets: Settings = client.db.load("settings", { channelId });
-        let blacklisted: LevelData[] = client.db.load("blacklist", { channelId })?.levels;
+    async addLevel(client: Gdreqbot, user: User, query: string, notes?: string) {
+        let sets: Settings = client.db.load("settings");
+        let blacklisted: LevelData[] = client.db.load("blacklist")?.levels;
         let bl: string[] = client.blacklist.get("levels");
         if (!sets.req_enabled) return { status: ResCode.DISABLED };
 
@@ -33,7 +33,7 @@ class Request {
             else if (blacklisted?.find(l => l.id == newLvl.id))
                 return { status: ResCode.BLACKLISTED };
 
-            let levels: LevelData[] = client.db.load("levels", { channelId }).levels;
+            let levels: LevelData[] = client.db.load("levels").levels;
 
             if (levels.find(l => l.id == newLvl.id))
                 return { status: ResCode.ALREADY_ADDED };
@@ -43,7 +43,7 @@ class Request {
                 return { status: ResCode.FULL };
 
             levels.push(newLvl);
-            await client.db.save("levels", { channelId }, { levels });
+            await client.db.save("levels", { levels });
 
             return { status: ResCode.OK, level: newLvl };
         } catch (e) {
@@ -52,8 +52,8 @@ class Request {
         }
     }
 
-    async removeLevel(client: Gdreqbot, channelId: string, query: string) {
-        let levels: LevelData[] = client.db.load("levels", { channelId }).levels;
+    async removeLevel(client: Gdreqbot, query: string) {
+        let levels: LevelData[] = client.db.load("levels").levels;
         if (!levels.length)
             return { status: ResCode.EMPTY };
 
@@ -64,7 +64,7 @@ class Request {
         let level = levels.splice(pos, 1);
 
         try {
-            await client.db.save("levels", { channelId }, { levels });
+            await client.db.save("levels", { levels });
         } catch (e) {
             console.error(e);
             return { status: ResCode.ERROR };
@@ -73,8 +73,8 @@ class Request {
         return { status: ResCode.OK, level };
     }
 
-    getLevel(client: Gdreqbot, channelId: string, query?: string) {
-        let levels: LevelData[] = client.db.load("levels", { channelId }).levels;
+    getLevel(client: Gdreqbot, query?: string) {
+        let levels: LevelData[] = client.db.load("levels").levels;
         if (!levels.length)
             return { status: ResCode.EMPTY };
 
@@ -93,16 +93,16 @@ class Request {
         return { status: ResCode.OK, level, pos };
     }
 
-    async swapLevels(client: Gdreqbot, channelId: string, query1: string, query2: string) {
-        let levels: LevelData[] = client.db.load("levels", { channelId }).levels;
+    async swapLevels(client: Gdreqbot, query1: string, query2: string) {
+        let levels: LevelData[] = client.db.load("levels").levels;
         if (!levels.length)
             return { status: ResCode.EMPTY };
 
-        let level1 = this.getLevel(client, channelId, query1);
+        let level1 = this.getLevel(client, query1);
         if (level1.status == ResCode.NOT_FOUND)
             return { status: ResCode.NOT_FOUND, query: 0 };
         
-        let level2 = this.getLevel(client, channelId, query2);
+        let level2 = this.getLevel(client, query2);
         if (level2.status == ResCode.NOT_FOUND)
             return { status: ResCode.NOT_FOUND, query: 1 };
 
@@ -110,22 +110,22 @@ class Request {
         levels[level2.pos] = level1.level;
         levels[temp.pos] = level2.level;
 
-        await client.db.save("levels", { channelId }, { levels });
+        await client.db.save("levels", { levels });
         return { status: ResCode.OK, levels: [level1, level2] };
     }
 
-    async clear(client: Gdreqbot, channelId: string) {
-        let levels: LevelData[] = client.db.load("levels", { channelId }).levels;
+    async clear(client: Gdreqbot) {
+        let levels: LevelData[] = client.db.load("levels").levels;
         if (!levels.length)
             return { status: ResCode.EMPTY };
 
-        await client.db.save("levels", { channelId }, { levels: [] });
+        await client.db.save("levels", { levels: [] });
         return { status: ResCode.OK };
     }
 
-    async next(client: Gdreqbot, channelId: string) {
-        let levels: LevelData[] = client.db.load("levels", { channelId }).levels;
-        let sets: Settings = client.db.load("settings", { channelId });
+    async next(client: Gdreqbot) {
+        let levels: LevelData[] = client.db.load("levels").levels;
+        let sets: Settings = client.db.load("settings");
 
         if (!levels.length)
             return { status: ResCode.EMPTY };
@@ -133,29 +133,29 @@ class Request {
         try {
             if (sets.random_queue) {
                 let idx = Math.floor(Math.random() * levels.length);
-                await this.swapLevels(client, channelId, levels[0].id, levels[idx].id);
+                await this.swapLevels(client, levels[0].id, levels[idx].id);
 
-                levels = client.db.load("levels", { channelId }).levels;
+                levels = client.db.load("levels").levels;
                 levels.splice(idx, 1);
             } else {
                 levels.shift();
             }
 
-            await client.db.save("levels", { channelId }, { levels });
+            await client.db.save("levels", { levels });
         } catch (e) {
             console.error(e);
             return { status: ResCode.ERROR };
         }
 
-        let level: LevelData = client.db.load("levels", { channelId }).levels[0];
+        let level: LevelData = client.db.load("levels").levels[0];
         if (!level)
             return { status: ResCode.EMPTY };
 
         return { status: ResCode.OK, level, random: sets.random_queue };
     }
 
-    list(client: Gdreqbot, channelId: string, page?: number) {
-        let levels: LevelData[] = client.db.load("levels", { channelId }).levels;
+    list(client: Gdreqbot, page?: number) {
+        let levels: LevelData[] = client.db.load("levels").levels;
         if (!levels.length)
             return { status: ResCode.EMPTY };
 
@@ -193,24 +193,24 @@ class Request {
         return { status: ResCode.OK, page: pages[page ? page-1 : 0], pages: pages.length };
     }
 
-    async toggle(client: Gdreqbot, channelId: string, type: "queue" | "random" | "silent") {
-        let sets: Settings = client.db.load("settings", { channelId });
+    async toggle(client: Gdreqbot, type: "queue" | "random" | "silent") {
+        let sets: Settings = client.db.load("settings");
         
         switch (type) {
             case "queue":
-                await client.db.save("settings", { channelId }, { req_enabled: !sets.req_enabled });
+                await client.db.save("settings", { req_enabled: !sets.req_enabled });
                 return !sets.req_enabled;
             case "random":
-                await client.db.save("settings", { channelId }, { random_queue: !sets.random_queue });
+                await client.db.save("settings", { random_queue: !sets.random_queue });
                 return !sets.random_queue;
             case "silent":
-                await client.db.save("settings", { channelId }, { silent_mode: !sets.silent_mode });
+                await client.db.save("settings", { silent_mode: !sets.silent_mode });
                 return !sets.silent_mode;
         }
     }
 
-    async set(client: Gdreqbot, channelId: string, key: string, value: string) {
-        let sets: Settings = client.db.load("settings", { channelId });
+    async set(client: Gdreqbot, key: string, value: string) {
+        let sets: Settings = client.db.load("settings");
 
         // ugly as hell ik
         switch (key) {
@@ -258,7 +258,7 @@ class Request {
                 return { status: ResCode.INVALID_KEY };
         }
 
-        await client.db.save("settings", { channelId }, sets);
+        await client.db.save("settings", sets);
         return { status: ResCode.OK };
     }
 }

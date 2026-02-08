@@ -1,5 +1,4 @@
-import { writeFile } from "fs/promises";
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import BaseCommand from "../structs/BaseCommand";
 import { ChatMessage } from "@twurple/chat";
 import PermLevels from "../structs/PermLevels";
@@ -14,10 +13,7 @@ export = class RebootCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string): Promise<any> {
-        await client.say(channel, "Rebooting...", { replyTo: msg });
-
-        await writeFile("./reboot.json", `{"channel": "${channel}", "timestamp": "${Date.now()}"}`);
+    async run(client: Gdreqbot, msg: ChatMessage): Promise<string> {
         client.logger.reboot();
         process.exit();
     }

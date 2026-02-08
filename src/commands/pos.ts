@@ -1,4 +1,4 @@
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import BaseCommand from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";
@@ -17,38 +17,32 @@ export = class PosCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[]): Promise<any> {
-        let levels: LevelData[] = client.db.load("levels", { channelId: msg.channelId }).levels;
-        let sets: Settings = client.db.load("settings", { channelId: msg.channelId });
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<string> {
+        let levels: LevelData[] = client.db.load("levels").levels;
+        let sets: Settings = client.db.load("settings");
 
         let query = "";
         if (args[0]) {
             query = args.join(" ");
         } else {
-            let usrLvls = levels.filter(l => l.user.userName == msg.userInfo.userName); // todo: change to userId
+            let usrLvls = levels.filter(l => l.user.userId == msg.userInfo.userId); // todo: change to userId
             if (!usrLvls?.length)
-                return client.say(channel, "Kappa You don't have any levels in the queue.", { replyTo: msg });
+                return "Kappa You don't have any levels in the queue.";
 
             query = usrLvls[0].id;
         }
 
-        let res = client.req.getLevel(client, msg.channelId, query);
+        let res = client.req.getLevel(client, query);
 
         switch (res.status) {
-            case ResCode.EMPTY: {
-                client.say(channel, "Kappa The queue is empty.", { replyTo: msg });
-                break;
-            }
+            case ResCode.EMPTY:
+                return "Kappa The queue is empty.";
 
-            case ResCode.NOT_FOUND: {
-                client.say(channel, "Kappa That level is not in the queue.", { replyTo: msg });
-                break;
-            }
+            case ResCode.NOT_FOUND:
+                return "Kappa That level is not in the queue.";
 
-            case ResCode.OK: {
-                client.say(channel, `${args[0] ? `'${res.level.name}'` : `Your level (${res.level.name})`} is at position ${res.pos+1} in the queue.${sets.random_queue ? " [RANDOM ORDER]" : ""}`, { replyTo: msg });
-                break;
-            }
+            case ResCode.OK:
+                return `${args[0] ? `'${res.level.name}'` : `Your level (${res.level.name})`} is at position ${res.pos+1} in the queue.${sets.random_queue ? " [RANDOM ORDER]" : ""}`;
         }
     }
 }

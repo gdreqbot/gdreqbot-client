@@ -1,5 +1,5 @@
 import { ChatMessage } from "@twurple/chat";
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import BaseCommand from "../structs/BaseCommand";
 import PermLevels from "../structs/PermLevels";
 import { Perm } from "../datasets/perms";
@@ -19,20 +19,20 @@ export = class HelpCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { userPerms: PermLevels, privilegeMode: boolean }): Promise<any> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { userPerms: PermLevels, privilegeMode: boolean }): Promise<string> {
         let cmd = client.commands.get(args[0])
             || client.commands.values().find(c => c.config.aliases.includes(args[0]));
 
         if (args[0] && !cmd)
-            return client.say(channel, "Kappa That command doesn't exist.", { replyTo: msg });
+            return "Kappa That command doesn't exist.";
 
-        let sets: Settings = client.db.load("settings", { channelId: msg.channelId });
+        let sets: Settings = client.db.load("settings", );
         let str;
 
         if (opts.privilegeMode) {
             if (cmd) {
                 if (!cmd.config.supportsPrivilege)
-                    return client.say(channel, "That command doesn't support privilege mode.", { replyTo: msg });
+                    return "That command doesn't support privilege mode.";
 
                 str = `${sets.prefix ?? client.config.prefix}pr ${cmd.info.name}: ${sets.prefix ? cmd.info.privilegeDesc.replace(client.config.prefix, sets.prefix) : cmd.info.privilegeDesc} | args: ${cmd.info.privilegeArgs ? `${sets.prefix ?? client.config.prefix}pr ${cmd.info.name} ${cmd.info.privilegeArgs}` : "none"}`;
                 if (sets.prefix) str.replace(client.config.prefix, sets.prefix);
@@ -40,7 +40,7 @@ export = class HelpCommand extends BaseCommand {
                 str = `${sets.prefix ?? client.config.prefix}pr help <command> for more info | ${client.commands.values().filter(c => c.config.supportsPrivilege).map(c => `${sets.prefix?? client.config.prefix}pr ${c.info.name}`).toArray().join(sets.prefix == "-" ? " | " : " - ")}`
             }
         } else {
-            let perms: Perm[] = client.db.load("perms", { channelId: msg.channelId }).perms;
+            let perms: Perm[] = client.db.load("perms", ).perms;
 
             if (cmd) {
                 let customPerm = perms?.find(p => p.cmd == cmd.info.name);
@@ -51,6 +51,6 @@ export = class HelpCommand extends BaseCommand {
             }
         }
 
-        await client.say(channel, str, { replyTo: msg });
+        return str;
     }
 }

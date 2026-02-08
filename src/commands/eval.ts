@@ -1,4 +1,4 @@
-import Gdreqbot from "../structs/Bot";
+import Gdreqbot from "../modules/Bot";
 import BaseCommand from "../structs/BaseCommand";
 import { ChatMessage } from "@twurple/chat";
 import PermLevels from "../structs/PermLevels";
@@ -14,7 +14,7 @@ export = class EvalCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[]): Promise<any> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<string> {
         try {
             let result = await eval(args.join(" "));
             if (typeof result !== "string")
@@ -25,10 +25,10 @@ export = class EvalCommand extends BaseCommand {
                 result = "Result exceeds character limit (check the console)";
             }
 
-            await client.say(channel, result, { replyTo: msg });
+            return result;
         } catch (err) {
             client.logger.error("Eval", err);
-            await client.say(channel, err, { replyTo: msg });
+            return err;
         }
     }
 }
