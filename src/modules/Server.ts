@@ -104,6 +104,7 @@ export default class {
             });
 
             this.client = new Gdreqbot(db);
+            this.client.connect();
 
             res.redirect('/dashboard');
 

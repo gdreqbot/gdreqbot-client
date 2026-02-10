@@ -14,6 +14,7 @@ import { Blacklist } from "../datasets/blacklist";
 import { Settings } from "../datasets/settings";
 import { Perm } from "../datasets/perms";
 import { RefreshingAuthProvider } from "@twurple/auth";
+import { Session } from "../datasets/session";
 
 class Gdreqbot extends ChatClient {
     commands: Map<string, BaseCommand>;
@@ -25,24 +26,28 @@ class Gdreqbot extends ChatClient {
     config: typeof config;
 
     constructor(db: Database, options?: ChatClientOptions) {
-        const tokenData = JSON.parse(fs.readFileSync(`./tokens.${config.botId}.json`, "utf-8"));
-        const authProvider = new RefreshingAuthProvider({
-            clientId: config.clientId,
-            clientSecret: config.clientSecret
-        });
+        //const tokenData = JSON.parse(fs.readFileSync(`./tokens.${config.botId}.json`, "utf-8"));
+        //const authProvider = new RefreshingAuthProvider({
+        //    clientId: config.clientId,
+        //    clientSecret: config.clientSecret
+        //});
 
-        authProvider.addUser(config.botId, tokenData);
-        authProvider.addIntentsToUser(config.botId, ["chat"]);
+        //authProvider.addUser(config.botId, tokenData);
+        //authProvider.addIntentsToUser(config.botId, ["chat"]);
+        //
+        //authProvider.onRefresh((userId, newTokenData) => {
+        //    fs.writeFileSync(`./tokens.${userId}.json`, JSON.stringify(newTokenData, null, 4), "utf-8");
+        //    this.logger.log("Refreshing token...");
+        //});
         
-        authProvider.onRefresh((userId, newTokenData) => {
-            fs.writeFileSync(`./tokens.${userId}.json`, JSON.stringify(newTokenData, null, 4), "utf-8");
-            this.logger.log("Refreshing token...");
-        });
+        const session: Session = db.load("session");
+        if (!session?.secret)
+            throw new Error('No session secret');
 
         super({
             ...options,
-            authProvider,
-            channels: ["galaxyvinci05"]
+            //authProvider,
+            channels: [session.userName]
         });
 
         this.commands = new Map();
@@ -67,7 +72,8 @@ class Gdreqbot extends ChatClient {
         });
 
         this.onMessage(async (channel, user, text, msg) => {
-            if (msg.userInfo.userId == this.config.botId && process.env.ENVIRONMENT != "dev") return;
+            //console.log(text)
+            //if (msg.userInfo.userId == this.config.botId && process.env.ENVIRONMENT != "dev") return;
 
             //await this.db.setDefault({ channelId: msg.channelId, channelName: channel });
 

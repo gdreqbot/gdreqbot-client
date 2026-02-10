@@ -10,6 +10,7 @@ import fs from "fs";
 
 import { app, BrowserWindow } from "electron";
 import Database from "./modules/Database";
+import Socket from "./modules/Socket";
 
 const logger = new Logger("CORE");
 
@@ -17,6 +18,7 @@ const database = new Database("data.db");
 database.init();
 
 const server = new Server(database);
+const socket = new Socket(database);
 
 const createWindow = (port: string) => {
     const win = new BrowserWindow({

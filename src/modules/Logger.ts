@@ -65,13 +65,12 @@ class Logger {
 
     /**
      * 
-     * @param appName Application name
-     * @param guildCount Guild count
-     * @description Logs a successful bot startup
+     * @param content Content to log
+     * @description Sends log content to stdout
      */
-    ready(appName: string, guildCount: number) {
+    ready(content: string) {
         const timestamp = `[${moment(Date.now()).format("DD/MM/YYYY HH:mm:ss")}]:`;
-        console.log(`${timestamp} [${this.module}] ${color.greenBright("[READY]")} Logged in as ${color.blueBright(appName)}. Running in ${color.greenBright(guildCount)} guilds`);
+        console.log(`${timestamp} [${this.module}] ${color.greenBright("[READY]")} ${content}`);
     }
 
     /**
