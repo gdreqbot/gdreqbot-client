@@ -9,27 +9,14 @@ import Server from "./modules/Server";
 import fs from "fs";
 
 import { app, BrowserWindow } from "electron";
+import Database from "./modules/Database";
 
-const tokenData = JSON.parse(fs.readFileSync(`./tokens.${config.botId}.json`, "utf-8"));
-const authProvider = new RefreshingAuthProvider({
-    clientId: config.clientId,
-    clientSecret: config.clientSecret
-});
+const logger = new Logger("CORE");
 
-authProvider.addUser(config.botId, tokenData);
-authProvider.addIntentsToUser(config.botId, ["chat"]);
+const database = new Database("data.db");
+database.init();
 
-authProvider.onRefresh((userId, newTokenData) => {
-    fs.writeFileSync(`./tokens.${userId}.json`, JSON.stringify(newTokenData, null, 4), "utf-8");
-    new Logger().log("Refreshing token...");
-});
-
-const client = new Gdreqbot({
-    authProvider,
-    channels: ["galaxyvinci05"]
-});
-
-const server = new Server(client);
+const server = new Server(database);
 
 const createWindow = (port: string) => {
     const win = new BrowserWindow({
@@ -44,16 +31,15 @@ const createWindow = (port: string) => {
 
 app.whenReady().then(async () => {
     try {
-        await client.db.init();
         let { port } = await server.run();
         createWindow(port.toString());
         //client.connect();
     } catch (e) {
-        client.logger.error(e);
+        logger.error(e);
     }
 });
 
 app.on('before-quit', () => {
     server.close();
-    client.logger.log("Closing server...");
+    logger.log("Closing server...");
 });

@@ -3,8 +3,6 @@ dotenv.config({ quiet: true });
 
 import express, { NextFunction, Request, Response, Express } from "express";
 import session from "express-session";
-import passport from "passport";
-import { Strategy as twitchStrategy } from "passport-twitch-latest";
 import bodyParser from "body-parser";
 import { v4 as uuid } from "uuid";
 import path from 'path';
@@ -12,6 +10,7 @@ import multer from "multer";
 import moment from "moment";
 import "moment-duration-format";
 import fs from "fs";
+import superagent from "superagent";
 import Gdreqbot from '../modules/Bot';
 import { User } from "../structs/user";
 import { Settings } from "../datasets/settings";
@@ -24,16 +23,24 @@ import { LevelData } from "../datasets/levels";
 import { getLevel } from "../apis/gd";
 import { AddressInfo } from "net";
 import { Server } from "http";
+import { Session } from "../datasets/session";
+import Logger from "./Logger";
+import Database from "./Database";
+import config from "../config";
 
 export default class {
     app: Express;
-    client: Gdreqbot;
+    private client: Gdreqbot;
     server: Server;
     port: number;
+    logger: Logger;
+    db: Database;
 
-    constructor(client: Gdreqbot) {
+    constructor(db: Database) {
         this.app = express();
-        this.client = client;
+        this.client = null;
+        this.logger = new Logger("Server");
+        this.db = db;
 
         const server = this.app;
 
@@ -50,77 +57,14 @@ export default class {
                 saveUninitialized: false
             }),
         );
-        server.use(passport.initialize());
-        server.use(passport.session());
         server.use(bodyParser.json());
         server.set('views', path.join(__dirname, '../../web/views'));
 
         server.set('view engine', 'ejs');
 
-        passport.use(
-            new twitchStrategy({
-                clientID: client.config.clientId,
-                clientSecret: client.config.clientSecret,
-                callbackURL: process.env.REDIRECT_URI,
-                scope: 'chat:read chat:edit'
-            }, async (accessToken, refreshToken, profile, done) => {
-                let channelName = profile.login;
-                let channelId = profile.id;
-
-                let bl: string[] = client.blacklist.get("users");
-                if (bl?.includes(channelId)) {
-                    client.logger.warn(`Blacklisted user tried to auth: ${channelName} (${channelId})`);
-                    return done(null, false);
-                }
-
-                //let channels: User[] = channelsdb.get("channels");
-                //let channel: User = channels.find(c => c.userId == channelId);
-
-                //await client.join(channelName);
-
-                //if (!channel) {
-                //    // push to channels db
-                //    channels.push({ userId: channelId, userName: channelName });
-                //    
-                //    await channelsdb.set("channels", channels);
-                //    await client.db.setDefault({ channelId, channelName });
-
-                //    await client.say(channelName, "Thanks for adding gdreqbot! You can get a list of commands by typing !help");
-                //    client.logger.log(`→   New channel joined: ${channelName}`);
-                //} else if (channel.userName != channelName) {
-                //    let idx = channels.findIndex(c => c.userId == channelId);
-                //    channels[idx].userName = channelName;
-
-                //    await channelsdb.set("channels", channels);
-                //} else {
-                //    client.logger.log(`Authenticated: ${channelName}`);
-                //}
-                client.logger.log(`Authenticated: ${channelName}`);
-
-                let user: User = {
-                    userId: profile.id,
-                    userName: profile.login
-                };
-                done(null, user);
-            })
-        );
-
-        passport.serializeUser((user: User, done) => {
-            done(null, user.userId);
-        });
-
-        passport.deserializeUser((userId, done) => {
-            //let channels: User[] = channelsdb.get("channels");
-            //let user = channels.find(c => c.userId == userId);
-            //if (!user)
-            //    return done(null, false);
-
-            //done(null, user);
-        });
-
         const renderView = (req: Request, res: Response, view: string, data: any = {}) => {
             const baseData = {
-                bot: client,
+                bot: this.client,
                 path: req.path,
             };
             res.render(path.resolve(`./web/views/${view}`), Object.assign(baseData, data));
@@ -131,24 +75,47 @@ export default class {
         });
 
         server.get('/auth', (req, res, next) => {
-            let redirectTo = req.query.redirectTo || 'dashboard';
+            //let redirectTo = req.query.redirectTo || 'dashboard';
+            const redirect = `http://127.0.0.1:${this.port}/auth/callback`;
+            const url = `${process.env.URL}/auth?redirect_uri=${encodeURIComponent(redirect)}`;
 
-            passport.authenticate('twitch', {
-                state: redirectTo as string
-            })(req, res, next);
+            res.redirect(url);
+
+            //passport.authenticate('twitch', {
+            //    state: redirectTo as string
+            //})(req, res, next);
         });
 
-        server.get('/auth/callback', passport.authenticate('twitch', {
-            failureRedirect: '/auth/error'
-        }), (req, res) => {
-            let redirectTo = req.query.state;
+        server.get('/auth/callback', async (req, res) => {
+            const { secret } = req.query;
+            if (!secret)
+                return res.status(400).send('Missing secret');
 
-            if (redirectTo == 'add')
-                res.redirect('/auth/success');
-            else if (redirectTo == 'dashboard')
-                res.redirect('/dashboard');
-            else
-                res.redirect('/');
+            const user = await superagent
+                .get(`${process.env.URL}/api/me`)
+                .set('Authorization', `Bearer ${secret}`);
+
+            console.log(user.body);
+
+            await this.db.save("session", {
+                userId: user.body.userId,
+                userName: user.body.userName,
+                secret
+            });
+
+            this.client = new Gdreqbot(db);
+
+            res.redirect('/dashboard');
+
+
+            //let redirectTo = req.query.state;
+
+            //if (redirectTo == 'add')
+            //    res.redirect('/auth/success');
+            //else if (redirectTo == 'dashboard')
+            //    res.redirect('/dashboard');
+            //else
+            //    res.redirect('/');
         });
 
         server.get('/auth/success', (req, res) => {
@@ -160,28 +127,25 @@ export default class {
         });
 
         server.get('/dashboard', (req, res) => {
-            if (req.isAuthenticated())
-                return res.redirect(`/dashboard/${(req.user as User).userId}/requests`);
-
-            res.redirect('/auth');
+            res.redirect('/dashboard/requests');
         });
 
-        server.get('/dashboard/:user/requests', this.checkAuth, async (req, res) => {
-            let userId = (req.user as User).userId;
-            let userName = (req.user as User).userName;
+        server.get('/dashboard/requests', /* this.checkAuth, */async (req, res) => {
+            const session: Session = this.db.load("session");
+            const userId = session.userId;
+            const userName = session.userName;
+            //await this.db.setDefault({ channelId: userId, channelName: userName });
 
-            if (userId != req.params.user)
-                return res.status(403).send('Unauthorized');
-
-            //await client.db.setDefault({ channelId: userId, channelName: userName });
-
-            let levels: LevelData[] = client.db.load("levels").levels;
-            let sets: Settings = client.db.load("settings");
-            let bl: Blacklist = client.db.load("blacklist");
+            let levels: LevelData[] = this.db.load("levels").levels;
+            let sets: Settings = this.db.load("settings");
+            let bl: Blacklist = this.db.load("blacklist");
 
             res.render('dashboard/requests', {
                 isAuthenticated: true,
-                user: req.user,
+                user: {
+                    userId,
+                    userName
+                },
                 levels,
                 sets,
                 bl,
@@ -191,23 +155,21 @@ export default class {
             });
         });
 
-        server.post('/dashboard/:user/requests', this.checkAuth, multer().none(), async (req, res) => {
-            let userId = (req.user as User).userId;
-            let userName = (req.user as User).userName;
+        server.post('/dashboard/requests', multer().none(), async (req, res) => {
+            const session: Session = this.db.load("session");
+            const userId = session.userId;
+            const userName = session.userName;
 
-            if (userId != req.params.user)
-                return res.status(403).send('Unauthorized');
-
-            let levels: LevelData[] = client.db.load("levels").levels;
-            let sets: Settings = client.db.load("settings");
-            let bl: Blacklist = client.db.load("blacklist");
+            let levels: LevelData[] = this.db.load("levels").levels;
+            let sets: Settings = this.db.load("settings");
+            let bl: Blacklist = this.db.load("blacklist");
 
             let args: string[] = [];
             let cmd: BaseCommand;
 
             if (req.body.formType.startsWith("toggle")) {
                 let type = req.body.formType.split("-")[1];
-                cmd = client.commands.get(type.replace("req", "toggle"));
+                cmd = this.client.commands.get(type.replace("req", "toggle"));
             } else if (req.body.formType.startsWith("blacklist")){
                 let type = req.body.formType.split("-")[1];
 
@@ -222,48 +184,46 @@ export default class {
                         notes: null
                     });
 
-                await client.db.save("blacklist", bl);
-                client.logger.log(`(auto) Blacklisted ${type} in channel: ${userName}`);
+                await this.db.save("blacklist", bl);
+                this.logger.log(`(auto) Blacklisted ${type} in channel: ${userName}`);
                 return res.status(200).json({ success: true });
             } else if (req.body.formType.startsWith("remove")) {
                 if (!levels.length) return res.status(200).json({ success: true });
 
                 let id = req.body.formType.split("-")[1];
-                cmd = client.commands.get("privilege");
+                cmd = this.client.commands.get("privilege");
                 args = ["remove", id];
             } else {
                 if (!levels.length) return res.status(200).json({ success: true }); 
-                cmd = client.commands.get(req.body.formType);
+                cmd = this.client.commands.get(req.body.formType);
             }
 
             try {
-                await cmd.run(client, { channelId: userId } as any, args, { auto: true, silent: sets.silent_mode });
-                client.logger.log(`(auto) Running command: ${cmd.info.name} in channel: ${userName}`);
+                await cmd.run(this.client, { channelId: userId } as any, args, { auto: true, silent: sets.silent_mode });
+                this.logger.log(`(auto) Running command: ${cmd.info.name} in channel: ${userName}`);
             } catch (e) {
-                client.say(userName, `An error occurred running command: ${cmd.info.name}. If the issue persists, please contact the developer.`);
+                this.client.say(userName, `An error occurred running command: ${cmd.info.name}. If the issue persists, please contact the developer.`);
                 console.error(e);
             }
 
             res.status(200).json({ success: true });
         });
 
-        server.get('/dashboard/:user/configuration', this.checkAuth, async (req, res) => {
-            let userId = (req.user as User).userId;
-            let userName = (req.user as User).userName;
+        server.get('/dashboard/configuration', async (req, res) => {
+            const session: Session = this.db.load("session");
+            const userId = session.userId;
+            const userName = session.userName;
 
-            if (userId != req.params.user)
-                return res.status(403).send('Unauthorized');
+            //await this.db.setDefault({ channelId: userId, channelName: userName });
 
-            //await client.db.setDefault({ channelId: userId, channelName: userName });
-
-            let sets: Settings = client.db.load("settings");
-            let perms: Perm[] = client.db.load("perms").perms;
-            let bl: Blacklist = client.db.load("blacklist");
+            let sets: Settings = this.db.load("settings");
+            let perms: Perm[] = this.db.load("perms").perms;
+            let bl: Blacklist = this.db.load("blacklist");
 
             let cmdData: any = [];
             let setData: any = this.getSettings(sets);
 
-            client.commands.forEach(cmd => {
+            this.client.commands.forEach(cmd => {
                 if (cmd.config.permLevel == PermLevels.DEV) return;
 
                 let permData = perms.find(p => p.cmd == cmd.info.name);
@@ -284,7 +244,10 @@ export default class {
 
             res.render('dashboard/config', {
                 isAuthenticated: true,
-                user: req.user,
+                user: {
+                    userId,
+                    userName
+                },
                 setData,
                 cmdData,
                 perms: permLiterals.map(p => this.normalize(p)),
@@ -295,24 +258,22 @@ export default class {
             });
         });
 
-        server.post('/dashboard/:user/configuration', this.checkAuth, multer().none(), async (req, res) => {
-            let userId = (req.user as User).userId;
-            let userName = (req.user as User).userName;
-
-            if (userId != req.params.user)
-                return res.status(403).send('Unauthorized');
+        server.post('/dashboard/configuration', multer().none(), async (req, res) => {
+            const session: Session = this.db.load("session");
+            const userId = session.userId;
+            const userName = session.userName;
 
             switch (req.body.formType) {
                 case "settings": {
                     let sets = this.parseSettings(req.body);
-                    await client.db.save("settings", sets);
-                    client.logger.log(`Dashboard: updated settings for channel: ${userName}`);
+                    await this.db.save("settings", sets);
+                    this.logger.log(`Dashboard: updated settings for channel: ${userName}`);
                     break;
                 }
 
                 case "perms": {
-                    let perms: Perm[] = client.db.load("perms").perms;
-                    let filtered = this.filterPerms(req.body, perms, client.commands);
+                    let perms: Perm[] = this.db.load("perms").perms;
+                    let filtered = this.filterPerms(req.body, perms, this.client.commands);
 
                     filtered.forEach(perm => {
                         let name = perm.cmd.split('.')[0];
@@ -329,13 +290,13 @@ export default class {
                             if (!toDelete) perms.push(perm);
                     });
 
-                    await client.db.save("perms", { perms });
-                    client.logger.log(`Dashboard: updated perms for channel: ${userName}`);
+                    await this.db.save("perms", { perms });
+                    this.logger.log(`Dashboard: updated perms for channel: ${userName}`);
                     break;
                 }
 
                 case "blacklist-users": {
-                    let userBl: User[] = client.db.load("blacklist").users;
+                    let userBl: User[] = this.db.load("blacklist").users;
                     let invalid: string[] = [];
 
                     switch (req.body.action) {
@@ -380,7 +341,7 @@ export default class {
                         }
                     }
 
-                    await client.db.save("blacklist", { users: userBl });
+                    await this.db.save("blacklist", { users: userBl });
 
                     if (invalid.length > 0) {
                         res.status(400).json({
@@ -388,14 +349,14 @@ export default class {
                             invalid,
                         });
                     } else {
-                        client.logger.log(`Dashboard: updated user blacklist for channel: ${userName}`);
+                        this.logger.log(`Dashboard: updated user blacklist for channel: ${userName}`);
                         res.status(200).json({ success: true });
                     }
                     break;
                 }
 
                 case "blacklist-levels": {
-                    let levelBl: LevelData[] = client.db.load("blacklist").levels;
+                    let levelBl: LevelData[] = this.db.load("blacklist").levels;
                     let invalid: string[] = [];
 
                     switch (req.body.action) {
@@ -414,7 +375,7 @@ export default class {
                                 if (hasInvalid)
                                     continue;
 
-                                let data = client.req.parseLevel(raw);
+                                let data = this.client.req.parseLevel(raw);
 
                                 if (!levelBl)
                                     levelBl = [data];
@@ -442,7 +403,7 @@ export default class {
                         }
                     }
 
-                    await client.db.save("blacklist", { levels: levelBl });
+                    await this.db.save("blacklist", { levels: levelBl });
 
                     if (invalid.length > 0) {
                         res.status(400).json({
@@ -450,14 +411,14 @@ export default class {
                             invalid,
                         });
                     } else {
-                        client.logger.log(`Dashboard: updated level blacklist for channel: ${userName}`);
+                        this.logger.log(`Dashboard: updated level blacklist for channel: ${userName}`);
                         res.status(200).json({ success: true });
                     }
                     break;
                 }
 
                 default: {
-                    client.logger.error("what???");
+                    this.logger.error("what???");
                     break;
                 }
             }
@@ -465,49 +426,24 @@ export default class {
             res.status(200);
         });
 
-        server.get('/dashboard/:user/hide', this.checkAuth, multer().none(), async (req, res) => {
-            let userId = (req.user as User).userId;
-            let userName = (req.user as User).userName;
+        server.get('/dashboard/hide', multer().none(), async (req, res) => {
+            //await this.db.setDefault({ channelId: userId, channelName: userName });
 
-            if (userId != req.params.user)
-                return res.status(403).send('Unauthorized');
-            
-            //await client.db.setDefault({ channelId: userId, channelName: userName });
-
-            let sets: Settings = client.db.load("settings");
-            if (!sets.hide_note) await client.db.save("settings", { hide_note: true });
+            let sets: Settings = this.db.load("settings");
+            if (!sets.hide_note) await this.db.save("settings", { hide_note: true });
 
             res.status(200).json({ success: true });
         });
 
-        server.get('/logout', (req, res, next) => {
-            if (req.isAuthenticated())
-                req.logout(err => {
-                    if (err) return next(err);
-                });
+        server.get('/logout', async (req, res, next) => {
+            const session: Session = this.db.load("session");
+            if (session) {
+                await this.db.delete("session");
+                this.client.quit();
+                this.client = null;
+            }
 
             res.redirect('/');
-        });
-
-        server.get('/dashboard/:user/part', this.checkAuth, async (req, res, next) => {
-            //let userId = (req.user as User).userId;
-            //let userName = (req.user as User).userName;
-
-            //if (userId != req.params.user)
-            //    return res.status(403).send('Unauthorized');
-
-            //let channels: User[] = channelsdb.get("channels");
-            //let user = channels.find(c => c.userId == userId);
-
-            //if (user) {
-            //    try {
-            //        await client.commands.get('part').run(client, { channelId: userId } as any, userName, [], { auto: true });  // yes, I feel shame in doing this
-            //        res.redirect('/');
-            //    } catch (err) {
-            //        client.logger.error('', err);
-            //        renderView(req, res, 'error');
-            //    }
-            //}
         });
     }
 
@@ -516,7 +452,7 @@ export default class {
             this.server = this.app.listen(0, '127.0.0.1', () => {
                 let port = (this.server.address() as AddressInfo).port;
 
-                this.client.logger.log(`Server listening on http://127.0.0.1:${port}`);
+                this.logger.log(`Server listening on http://127.0.0.1:${port}`);
                 this.port = port;
                 resolve({
                     port,
@@ -543,10 +479,10 @@ export default class {
     }
 
     private getSettings(sets: any) {
-        const { defaultValues } = require('./datasets/settings');
+        const { defaultValues } = require('../datasets/settings');
         let obj: any = {};
 
-        for (let [key, value] of Object.entries(defaultValues).slice(3)) {
+        for (let [key, value] of Object.entries(defaultValues).slice(1)) {
             if (!sets[key])
                 obj[key] = {
                     value,

@@ -163,7 +163,7 @@
                         <p>• If you have any chat restrictions applied (Followers-Only chat, Subscriber-Only chat, Slowmode and others), you must <strong style="color: #00AD03">MOD</strong> or <strong style="color: #E005B9">VIP</strong> gdreqbot</p>
                         <p style="margin-left: 10px">Type <code class="has-text-primary">/mod gdreqbot</code> or <code class="has-text-primary">/vip gdreqbot</code> in your Twitch chat to do so</p>
                         <br>
-                        <p>• If you later want to remove gdreqbot from your chat, use the <strong class="has-text-info"><%= sets.prefix ?? "!" %>part</strong> command, or the button at the bottom of the <a href="/dashboard/<%= user.userId %>/configuration"><strong class="has-text-info">Configuration</strong></a> page.</p>
+                        <p>• If you later want to remove gdreqbot from your chat, use the <strong class="has-text-info"><%= sets.prefix ?? "!" %>part</strong> command, or the button at the bottom of the <a href="/dashboard/configuration"><strong class="has-text-info">Configuration</strong></a> page.</p>
                     </div>
                     <br>
                     <p style="margin-left: 10px">If you've read and understood, click the button below to hide this text forever (a very long time):</p>
@@ -327,8 +327,6 @@
         </section>
 
         <script>
-            const userId = "<%= user.userId %>";
-
             function copyMsg(copyButton) {
                 let msg = document.createElement('span');
 
@@ -344,7 +342,7 @@
 
             document.querySelector('#hide')?.addEventListener('click', async () => {
                 try {
-                    await fetch(`/dashboard/${userId}/hide`, {
+                    await fetch(`/dashboard/hide`, {
                         method: "GET",
                     });
 
@@ -369,7 +367,7 @@
                 formData.append('formType', type);
 
                 try {
-                    await fetch(`/dashboard/${userId}/requests`, {
+                    await fetch(`/dashboard/requests`, {
                         method: "POST",
                         body: formData
                     });
@@ -417,5 +415,4 @@
                 });
             });
         </script>
-<%- include('../components/footer') %>
 <%- include('components/sidebar') %>

@@ -454,10 +454,10 @@
     minimist "^1.2.8"
     postject "^1.0.0-alpha.6"
 
-"@galaxy05/map.db@^1.3.0":
-  version "1.3.0"
-  resolved "https://registry.yarnpkg.com/@galaxy05/map.db/-/map.db-1.3.0.tgz#ce93bee47fcf0f7d72b929be49cc1d980750a268"
-  integrity sha512-nZHQwTq74jlWYj/HsotVnCr4clbsOk0aat0GlXnCA7kTJh82LEO2uVXlCgNzCuwuFioI+MsGNVAE+CBLVLA+8Q==
+"@galaxy05/map.db@^1.3.1":
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/@galaxy05/map.db/-/map.db-1.3.1.tgz#ee0b6c8114ab6525499b42b42cbcb0b1e3d74b3d"
+  integrity sha512-H6U3UuWmVm6s5tbBOnj4J0gaxEOi4EnYvqntu1ivv3aNS5ITM7bmkuqh5KjSnB5N97vbW2v8rzq/9Uep/nI3Bg==
   dependencies:
     typescript "^5.9.3"
 

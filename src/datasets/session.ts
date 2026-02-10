@@ -1,11 +1,11 @@
 import { User } from "../structs/user";
 
-export const defaultValues: Account = {
+export const defaultValues: Session = {
     userId: "",
     userName: "",
     secret: ""
 }
 
-export interface Account extends User {
+export interface Session extends User {
     secret: string;
 }

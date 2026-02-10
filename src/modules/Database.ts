@@ -6,7 +6,8 @@ class Database {
     private db: MapDB;
 
     constructor(filename: string) {
-        this.db = new MapDB(filename, { path: app.getPath("userData") });
+        //this.db = new MapDB(filename, { path: app.getPath("userData") });
+        this.db = new MapDB(filename);
     }
 
     async init() {

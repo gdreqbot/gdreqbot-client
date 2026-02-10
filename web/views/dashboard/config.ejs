@@ -257,21 +257,9 @@
                     </div>
                     <br></br>
                 </div>
-                <hr>
-                <form action="/dashboard/<%= user.userId %>/part" method="GET">
-                    <button class="button" type="submit">
-                        <span class="icon has-text-danger">
-                            <i class="fas fa-arrow-left"></i>
-                        </span>
-                        <span class="has-text-danger">Part</span>
-                    </button>
-                </form>
-                <p>Note: parting gdreqbot will also log you out and <strong>delete all your data!</strong></p>
             </div>
         </section>
         <script>
-            const userId = "<%= user.userId %>";
-
             let changes = false;
             let isDefault = {};
 
@@ -279,7 +267,7 @@
                 let formData = new FormData(form);
 
                 try {
-                    let res = await fetch(`/dashboard/${userId}/configuration`, {
+                    let res = await fetch(`/dashboard/configuration`, {
                         method: "POST",
                         body: formData
                     });
@@ -432,7 +420,7 @@
                 button.disabled = true;
 
                 try {
-                    let res = await fetch(`/dashboard/${userId}/configuration`, {
+                    let res = await fetch(`/dashboard/configuration`, {
                         method: "POST",
                         body: formData
                     });
@@ -459,7 +447,7 @@
                 button.disabled = true;
 
                 try {
-                    let res = await fetch(`/dashboard/${userId}/configuration`, {
+                    let res = await fetch(`/dashboard/configuration`, {
                         method: "POST",
                         body: formData
                     });
@@ -488,7 +476,7 @@
                     formData.append("id", button.dataset.id);
 
                     try {
-                        await fetch(`/dashboard/${userId}/configuration`, {
+                        await fetch(`/dashboard/configuration`, {
                             method: "POST",
                             body: formData
                         });
@@ -508,7 +496,7 @@
                     formData.append("action", "clear");
 
                     try {
-                        await fetch(`/dashboard/${userId}/configuration`, {
+                        await fetch(`/dashboard/configuration`, {
                             method: "POST",
                             body: formData
                         });
@@ -551,7 +539,7 @@
 
             document.querySelector('#hide')?.addEventListener('click', async () => {
                 try {
-                    await fetch(`/dashboard/${userId}/hide`, {
+                    await fetch(`/dashboard/hide`, {
                         method: "GET",
                     });
 
@@ -561,5 +549,4 @@
                 }
             });
         </script>
-<%- include('../components/footer') %>
 <%- include('components/sidebar') %>

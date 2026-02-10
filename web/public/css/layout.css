@@ -19,10 +19,12 @@
 
 .sidebar {
     position: fixed;
-    top: var(--navbar-height);
+    top: 0;
+    /* top: var(--navbar-height); */
     left: 0;
     width: 250px;
-    height: calc(100vh - var(--navbar-height));
+    /* height: calc(100vh - var(--navbar-height)); */
+    height: 100vh;
     background-color: var(--bulma-scheme-main);
 
     display: flex;
