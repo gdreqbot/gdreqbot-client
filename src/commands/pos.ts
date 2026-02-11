@@ -1,5 +1,5 @@
 import Gdreqbot from "../modules/Bot";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";
 import { LevelData } from "../datasets/levels";
@@ -17,7 +17,7 @@ export = class PosCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<string> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<Response> {
         let levels: LevelData[] = client.db.load("levels").levels;
         let sets: Settings = client.db.load("settings");
 
@@ -27,7 +27,7 @@ export = class PosCommand extends BaseCommand {
         } else {
             let usrLvls = levels.filter(l => l.user.userId == msg.userInfo.userId); // todo: change to userId
             if (!usrLvls?.length)
-                return "Kappa You don't have any levels in the queue.";
+                return { path: "generic.user_no_lvls" };
 
             query = usrLvls[0].id;
         }
@@ -36,13 +36,29 @@ export = class PosCommand extends BaseCommand {
 
         switch (res.status) {
             case ResCode.EMPTY:
-                return "Kappa The queue is empty.";
+                return { path: "generic.empty_q" };
 
             case ResCode.NOT_FOUND:
-                return "Kappa That level is not in the queue.";
+                return { path: "generic.not_in_q" };
 
-            case ResCode.OK:
-                return `${args[0] ? `'${res.level.name}'` : `Your level (${res.level.name})`} is at position ${res.pos+1} in the queue.${sets.random_queue ? " [RANDOM ORDER]" : ""}`;
+            case ResCode.OK: {
+                let path: string;
+                if (sets.random_queue) {
+                    if (args[0]) path = "pos.random.alt";
+                    else path = "pos.random.base";
+                } else {
+                    if (args[0]) path = "pos.base.alt";
+                    else path = "pos.base.base";
+                }
+
+                return {
+                    path,
+                    data: {
+                        name: res.level.name,
+                        pos: res.pos+1
+                    }
+                }
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 import Gdreqbot from "../modules/Bot";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";
 import { LevelData } from "../datasets/levels";
@@ -19,7 +19,7 @@ export = class RemoveCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { privilegeMode: boolean, auto: boolean, silent: boolean }): Promise<string> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { privilegeMode: boolean, auto: boolean, silent: boolean }): Promise<Response> {
         let levels: LevelData[] = client.db.load("levels", ).levels;
         let query = "";
         if (opts.privilegeMode) {
@@ -30,7 +30,7 @@ export = class RemoveCommand extends BaseCommand {
             let usrLvls = levels.filter(l => l.user.userId == msg.userInfo.userId);
             if (!usrLvls?.length) {
                 if (!opts.silent)
-                    return "Kappa You don't have any levels in the queue.";
+                    return { path: "generic.user_no_lvls" };
                 else
                     return;
             }
@@ -42,16 +42,23 @@ export = class RemoveCommand extends BaseCommand {
 
         switch (res.status) {
             case ResCode.EMPTY:
-                if (!opts.silent) return "Kappa The queue is empty.";
+                if (!opts.silent) return { path: "generic.empty_q" };
 
             case ResCode.NOT_FOUND:
-                if (!opts.silent) return "Kappa That level is not in the queue.";
+                if (!opts.silent) return { path: "generic.not_in_q" };
 
             case ResCode.ERROR:
-                return "An error occurred, please try again. (If the issue persists, please contact the developer)";
+                return { path: "generic.error" };
 
             case ResCode.OK:
-                if (!opts.silent) return `PogChamp Removed '${res.level[0].name}' by ${res.level[0].creator} from the queue.`;
+                if (!opts.silent)
+                    return {
+                        path: "remove",
+                        data: {
+                            name: res.level[0].name,
+                            creator: res.level[0].creator
+                        }
+                    }
         }
     }
 }

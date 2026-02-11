@@ -1,5 +1,5 @@
 import Gdreqbot from "../modules/Bot";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 import { ChatMessage } from "@twurple/chat";
 import PermLevels from "../structs/PermLevels";
 
@@ -16,9 +16,9 @@ export = class PrivilegeCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { userPerms: PermLevels, auto: boolean, silent: boolean }): Promise<string> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { userPerms: PermLevels, auto: boolean, silent: boolean }): Promise<Response> {
         if (!args.length)
-            return "Specify a command to run in privilege mode.";
+            return { path: "privilege.no_cmd" };
 
         let newArgs = args.join(" ").trim().split(/ +/);
         let cmdName = newArgs.shift().toLowerCase();
@@ -28,7 +28,7 @@ export = class PrivilegeCommand extends BaseCommand {
 
         if (!cmd || !cmd.config.enabled || cmd.config.permLevel > opts.userPerms) return;
         if (!cmd.config.supportsPrivilege)
-            return "This command doesn't support privilege mode.";
+            return { path: "privilege.no_support" };
 
         if (!cmd.config.supportsSilent && opts.silent) return;
 
@@ -42,7 +42,7 @@ export = class PrivilegeCommand extends BaseCommand {
             });
         } catch (e) {
             console.error(e);
-            return `An error occurred running command: ${cmd.info.name}. If the issue persists, please contact the developer.`;
+            return { path: "generic.error" };
         }
     }
 }

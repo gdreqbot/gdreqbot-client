@@ -1,5 +1,5 @@
 import Gdreqbot from "../modules/Bot";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";
 import PermLevels from "../structs/PermLevels";
@@ -17,8 +17,8 @@ export = class SwapCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<string> {
-        if (args?.length < 2) return "Kappa You need to specify two levels to swap. (Specify both in quotes if a level name has a space)";
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<Response> {
+        if (args?.length < 2) return { path: "swap.no_args" };
         let query: string[] = [];
         let separator = "";
 
@@ -39,13 +39,23 @@ export = class SwapCommand extends BaseCommand {
 
         switch (res.status) {
             case ResCode.EMPTY:
-                return "Kappa The queue is empty.";
+                return { path: "generic.empty_q" };
 
             case ResCode.NOT_FOUND:
-                return `Kappa The level '${query[res.query]}' is not in the queue.`;
+                return { path: "swap.not_found", data: { name: query[res.query] } };
 
             case ResCode.OK:
-                return `PogChamp Swapped '${res.levels[0].level.name}' (${res.levels[0].level.id}) at position ${res.levels[0].pos+1} with '${res.levels[1].level.name}' (${res.levels[1].level.id}) at position ${res.levels[1].pos+1}`
+                return {
+                    path: "swap.ok",
+                    data: {
+                        name0: res.levels[0].level.name,
+                        id0: res.levels[0].level.name,
+                        pos0: res.levels[0].pos+1,
+                        name1: res.levels[1].level.name,
+                        id1: res.levels[1].level.name,
+                        pos1: res.levels[1].pos+1
+                    }
+                }
         }
     }
 }

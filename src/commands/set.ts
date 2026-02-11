@@ -1,5 +1,5 @@
 import Gdreqbot from "../modules/Bot";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";
 import PermLevels from "../structs/PermLevels";
@@ -17,26 +17,37 @@ export = class SetCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<string> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<Response> {
         let sets: Settings = client.db.load("settings");
 
         if (!args?.length)
-            return `Settings: ${Object.entries(sets).slice(2).filter(s => s[0] != "first_time").map(s => `${s[0]}:${s[1]}`).join(" - ")}`;
+            return {
+                path: "set.list",
+                data: {
+                    list: Object.entries(sets).slice(2).filter(s => s[0] != "first_time").map(s => `${s[0]}:${s[1]}`).join(" - ")
+                }
+            }
 
         let res = await client.req.set(client, args[0], args[1]);
 
         switch (res.status) {
             case ResCode.INVALID_KEY:
-                return "Error: invalid setting";
+                return { path: "set.invalid_key" };
 
             case ResCode.INVALID_VALUE:
-                return "Error: invalid value";
+                return { path: "set.invalid_value" };
 
             case ResCode.INVALID_RANGE:
-                return "Error: value must be either -1 or greater than 0";
+                return { path: "set.invalid_range" };
 
             case ResCode.OK:
-                return `Set '${args[0]}' to '${args[1]}'`;
+                return {
+                    path: "set.ok",
+                    data: {
+                        key: args[0],
+                        value: args[1]
+                    }
+                }
         }
     }
 }

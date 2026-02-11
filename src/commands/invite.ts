@@ -1,6 +1,6 @@
 import { ChatMessage } from "@twurple/chat";
 import Gdreqbot from "../modules/Bot";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 
 export = class PartCommand extends BaseCommand {
     constructor() {
@@ -11,7 +11,7 @@ export = class PartCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage): Promise<string> {
-        return "You can add me to your stream chat at the following link: https://gdreqbot.ddns.net";
+    async run(client: Gdreqbot, msg: ChatMessage): Promise<Response> {
+        return { path: "invite" };
     }
 }

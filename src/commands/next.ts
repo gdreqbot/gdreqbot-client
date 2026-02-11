@@ -1,7 +1,7 @@
 import { ChatMessage } from "@twurple/chat";
 import Gdreqbot from "../modules/Bot";
 import { ResCode } from "../modules/Request";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 import PermLevels from "../structs/PermLevels";
 import { User } from "../structs/user";
 
@@ -18,7 +18,7 @@ export = class NextCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean, silent: boolean }): Promise<string> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean, silent: boolean }): Promise<Response> {
         //if (!opts.auto) {
         //    let updateUsers: User[] = updatedb.get("updateUsers");
         //    let updateUser: User = updateUsers.find((u: User) => u.userId == msg.userInfo.userId);
@@ -35,14 +35,24 @@ export = class NextCommand extends BaseCommand {
 
         switch (res.status) {
             case ResCode.EMPTY:
-                if (!opts.silent && !opts.auto) return "Kappa The queue is empty.";
+                if (!opts.silent && !opts.auto) return { path: "generic.empty_q" };
 
 
             case ResCode.ERROR:
-                return "An error occurred.";
+                return { path: "generic.error" };
 
             case ResCode.OK:
-                if (!opts.silent) return `PogChamp Next ${res.random ? "random " : ""}level: '${res.level.name}' (${res.level.id}) by ${res.level.creator}`;
+                let path = res.random ? "next.random" : "next.base";
+
+                if (!opts.silent)
+                    return {
+                        path,
+                        data: {
+                            name: res.level.name,
+                            id: res.level.id,
+                            creator: res.level.creator
+                        }
+                    }
         }
     }
 }

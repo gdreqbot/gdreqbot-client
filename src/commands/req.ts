@@ -1,5 +1,5 @@
 import Gdreqbot from "../modules/Bot";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";
 import { Settings } from "../datasets/settings";
@@ -17,10 +17,10 @@ export = class ReqCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean, silent: boolean }): Promise<string> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean, silent: boolean }): Promise<Response> {
         if (!args.length) {
             if (!opts.silent)
-                return "Kappa You need to specify a query (level name or ID).";
+                return { path: "req.no_query" };
             else
                 return;
         }
@@ -43,38 +43,48 @@ export = class ReqCommand extends BaseCommand {
 
         switch (res.status) {
             case ResCode.NOT_FOUND:
-                if (!opts.silent) return `Kappa Couldn't find a level matching that ${opts.auto ? "ID" : "query"} (is it unlisted?)`;
+                if (!opts.silent) return { path: opts.auto ? "req.not_found.id" : "req.not_found.query" };
 
             case ResCode.ALREADY_ADDED:
-                if (!opts.silent) return "Kappa That level is already in the queue.";
+                if (!opts.silent) return { path: "already_added" };
 
             case ResCode.MAX_PER_USER:
-                if (!opts.silent) return `Kappa You have the max amount of levels in the queue (${sets.max_levels_per_user})`;
+                if (!opts.silent) return { path: "req.max_per_user", data: { max_levels_per_user: sets.max_levels_per_user } };
 
             case ResCode.FULL:
-                if (!opts.silent) return `Kappa The queue is full (max ${sets.max_queue_size} levels)`;
+                if (!opts.silent) return { path: "req.full", data: { max_queue_size: sets.max_queue_size } };
 
             case ResCode.DISABLED:
-                if (!opts.silent) return `Kappa Requests are disabled.${sets.first_time ? ` (enable in the dashboard, or use ${sets.prefix ?? client.config.prefix}toggle)` : ""}`;
+                if (!opts.silent) 
+                    if (sets.first_time)
+                        return { path: "req.disabled.first_time", data: { prefix: sets.prefix ?? client.config.prefix } };
+                    else
+                        return { path: "req.disabled.base" };
 
             case ResCode.BLACKLISTED:
-                if (!opts.silent) return "Kappa That level is blacklisted.";
-
-            case ResCode.GLOBAL_BL:
-                break;
+                if (!opts.silent) return { path: "req.blacklisted" };
 
             case ResCode.ERROR:
-                return "An error occurred, please try again. (If the issue persists, please contact the developer)";
+                return { path: "generic.error" };
 
             case ResCode.OK: {
                 if (opts.auto) client.logger.log(`Added level in channel: <channel>`);
 
-                if (!opts.silent) return `PogChamp Added '${res.level.name}' (${res.level.id}) by ${res.level.creator} to the queue at position ${client.db.load("levels", ).levels.length}`;
+                if (!opts.silent)
+                    return {
+                        path: "req.ok",
+                        data: {
+                            name: res.level.name,
+                            id: res.level.id,
+                            creator: res.level.creator,
+                            pos: client.db.load("levels").levels.length
+                        }
+                    }
             }
 
             default:
                 client.logger.warn("req case missing");
-                return "the dev forgot what to put here ¯\\_(ツ)_/¯";
+                return { path: "generic.forgot" };
         }
     }
 }

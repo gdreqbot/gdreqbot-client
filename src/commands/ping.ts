@@ -1,6 +1,6 @@
 import { ChatMessage } from "@twurple/chat";
 import Gdreqbot from "../modules/Bot";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 
 export = class PingCommand extends BaseCommand {
     constructor() {
@@ -13,10 +13,7 @@ export = class PingCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { privilegeMode: boolean }): Promise<string> {
-        if (opts.privilegeMode)
-            return "privileged pong";
-        else
-            return "pong";
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { privilegeMode: boolean }): Promise<Response> {
+        return { path: opts.privilegeMode ? "ping.alt" : "ping.base" };
     }
 }

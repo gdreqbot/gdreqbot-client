@@ -1,5 +1,5 @@
 import Gdreqbot from "../modules/Bot";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 import { ResCode } from "../modules/Request";
 import { ChatMessage } from "@twurple/chat";
 
@@ -15,18 +15,27 @@ export = class InfoCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<string> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<Response> {
         let res = client.req.getLevel(client, args.join(" "));
 
         switch (res.status) {
             case ResCode.EMPTY:
-                return "Kappa The queue is empty.";
+                return { path: "generic.empty_q" };
 
             case ResCode.NOT_FOUND:
-                return "Kappa Couldn't find that level.";
+                return { path: "generic.lvl_not_found" };
 
             case ResCode.OK:
-                return `${args[0] ? "Level Info" : "Now Playing"} | Level: '${res.level.name}' | Creator: ${res.level.creator} | ID: ${res.level.id} | Requested by: ${res.level.user.userName} | Notes: ${res.level.notes ?? "none"}`;
+                return {
+                    path: args[0] ? "info.alt" : "info.base",
+                    data: {
+                        name: res.level.name,
+                        creator: res.level.creator,
+                        id: res.level.id,
+                        user: res.level.user.userName,
+                        notes: res.level.notes ?? "none"
+                    }
+                }
         }
     }
 }
