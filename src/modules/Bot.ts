@@ -1,7 +1,7 @@
 import { ChatClient, ChatClientOptions } from "@twurple/chat";
 import MapDB from "@galaxy05/map.db";
 
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 import CommandLoader from "../modules/CommandLoader";
 import Logger from "../modules/Logger";
 import Database from "../modules/Database";
@@ -15,6 +15,7 @@ import { Settings } from "../datasets/settings";
 import { Perm } from "../datasets/perms";
 import { RefreshingAuthProvider } from "@twurple/auth";
 import { Session } from "../datasets/session";
+import Socket from "./Socket";
 
 class Gdreqbot extends ChatClient {
     commands: Map<string, BaseCommand>;
@@ -24,8 +25,9 @@ class Gdreqbot extends ChatClient {
     db: Database;
     req: Request;
     config: typeof config;
+    socket: Socket;
 
-    constructor(db: Database, options?: ChatClientOptions) {
+    constructor(db: Database, socket: Socket, options?: ChatClientOptions) {
         //const tokenData = JSON.parse(fs.readFileSync(`./tokens.${config.botId}.json`, "utf-8"));
         //const authProvider = new RefreshingAuthProvider({
         //    clientId: config.clientId,
@@ -57,6 +59,7 @@ class Gdreqbot extends ChatClient {
         this.db = db;
         this.req = new Request();
         this.config = config;
+        this.socket = socket;
 
         this.loadCommands();
 
@@ -103,10 +106,21 @@ class Gdreqbot extends ChatClient {
 
                 try {
                     let notes = text.replace(isId[0], "").replaceAll(/\s+/g, " ");
-                    await this.commands.get("req").run(this, msg, [isId[0], notes.length > 1 ? notes : null], { auto: true, silent: sets.silent_mode });
+                    let res: Response | void = await this.commands.get("req").run(this, msg, [isId[0], notes.length > 1 ? notes : null], { auto: true, silent: sets.silent_mode });
+
+                    if (res) {
+                        this.socket.ws.send(JSON.stringify(res));
+                    }
                 } catch (e) {
-                    "An error occurred running command: req. If the issue persists, please contact the developer.";
-                    console.error(e);
+                    this.socket.ws.send(
+                        JSON.stringify({
+                            path: "generic.cmd_error",
+                            data: {
+                                cmd: "req"
+                            }
+                        })
+                    );
+                    this.logger.error(e);
                 }
 
                 return;
@@ -128,10 +142,21 @@ class Gdreqbot extends ChatClient {
 
             try {
                 this.logger.log(`${sets.silent_mode ? "(silent) " : ""}Running command: ${cmd.info.name} in channel: ${channel}`);
-                await cmd.run(this, msg, args, { userPerms, silent: sets.silent_mode });
+                let res: Response | void = await cmd.run(this, msg, args, { userPerms, silent: sets.silent_mode });
+
+                if (res) {
+                    this.socket.ws.send(JSON.stringify(res));
+                }
             } catch (e) {
-                `An error occurred running command: ${cmd.info.name}. If the issue persists, please contact the developer.`;
-                console.error(e);
+                this.socket.ws.send(
+                    JSON.stringify({
+                        path: "generic.cmd_error",
+                        data: {
+                            cmd: cmd.info.name
+                        }
+                    })
+                );
+                this.logger.error(e);
             }
         });
     }

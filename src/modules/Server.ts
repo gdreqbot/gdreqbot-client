@@ -27,10 +27,12 @@ import { Session } from "../datasets/session";
 import Logger from "./Logger";
 import Database from "./Database";
 import config from "../config";
+import Socket from "./Socket";
 
 export default class {
     app: Express;
     private client: Gdreqbot;
+    private socket: Socket;
     server: Server;
     port: number;
     logger: Logger;
@@ -39,6 +41,7 @@ export default class {
     constructor(db: Database) {
         this.app = express();
         this.client = null;
+        this.socket = null;
         this.logger = new Logger("Server");
         this.db = db;
 
@@ -103,7 +106,8 @@ export default class {
                 secret
             });
 
-            this.client = new Gdreqbot(db);
+            this.socket = new Socket(db);
+            this.client = new Gdreqbot(db, this.socket);
             this.client.connect();
 
             res.redirect('/dashboard');
