@@ -40,7 +40,7 @@ export = class HelpCommand extends BaseCommand {
                 str = `${sets.prefix ?? client.config.prefix}pr help <command> for more info | ${client.commands.values().filter(c => c.config.supportsPrivilege).map(c => `${sets.prefix?? client.config.prefix}pr ${c.info.name}`).toArray().join(sets.prefix == "-" ? " | " : " - ")}`
             }
         } else {
-            let perms: Perm[] = client.db.load("perms", ).perms;
+            let perms: Perm[] = client.db.load("perms").perms;
 
             if (cmd) {
                 let customPerm = perms?.find(p => p.cmd == cmd.info.name);

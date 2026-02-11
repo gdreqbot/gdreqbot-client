@@ -1,5 +1,5 @@
 import Gdreqbot from "../modules/Bot";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response } from "../structs/BaseCommand";
 import { ChatMessage } from "@twurple/chat";
 import PermLevels from "../structs/PermLevels";
 import { Blacklist } from "../datasets/blacklist";
@@ -18,20 +18,20 @@ export = class BlacklistCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<string> {
+    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<Response> {
         let blacklist: Blacklist = client.db.load("blacklist");
 
-        if (!args.length || (!["user", "level"].includes(args[0]))) return "Select a valid blacklist (user or level)";
-        if (!["add", "remove", "clear", "list"].includes(args[1])) return "Select a valid action (add|remove|list|clear)";
-        if (!args[2] && (!["clear", "list"].includes(args[1]))) return `Specify a ${args[0]}.`;
+        if (!args.length || (!["user", "level"].includes(args[0]))) return { path: "blacklist.invalid_bl" };
+        if (!["add", "remove", "clear", "list"].includes(args[1])) return { path: "blacklist.invalid_action" };
+        if (!args[2] && (!["clear", "list"].includes(args[1]))) return { path: "blacklist.no_args", data: { type: args[0] } };
 
         switch (args[1]) {
             case "add": {
                 let query = args[0] == "user" ? args[2].replace(/\s*@\s*/g, '').toLowerCase() : args[2];
                 let rawData = args[0] == "user" ? await getUser(query, "login") : await getLevel(query);
 
-                if (!rawData) return `An error occurred fetching ${args[0]} data. Please try again.`;
-                else if (args[0] == "user" ? !rawData.data.length : rawData == "-1") return `That ${args[0]} doesn't exist.`;
+                if (!rawData) return { path: "blacklist.error", data: { type: args[0] } };
+                else if (args[0] == "user" ? !rawData.data.length : rawData == "-1") return { path: "blacklist.not_found", data: { type: args[0] } };
 
                 let data: any;
                 let str: string;
@@ -40,29 +40,34 @@ export = class BlacklistCommand extends BaseCommand {
                         userId: rawData.data[0].id,
                         userName: rawData.data[0].login
                     };
-                    if (blacklist.users.some(u => u.userId == data.userId)) return "That user is already blacklisted.";
+                    if (blacklist.users.some(u => u.userId == data.userId)) return { path: "blacklist.not_found", data: { type: args[0] } };
 
                     blacklist.users.push(data);
                     str = data.userName;
                 } else {
                     data = client.req.parseLevel(rawData);
-                    if (blacklist.levels?.some(l => l.id == data.id)) return "That level is already blacklisted.";
+                    if (blacklist.levels?.some(l => l.id == data.id)) return { path: "blacklist.not_found", data: { type: args[0] } };
 
                     blacklist.levels ? blacklist.levels.push(data) : blacklist.levels = [data];
                     str = `'${data.name}' (${data.id}) by ${data.creator}`;
                 }
 
                 await client.db.save("blacklist", blacklist);
-                `Added ${str} to the ${args[0]} blacklist.`;
-                break;
+                return {
+                    path: "blacklist.add",
+                    data: {
+                        str,
+                        type: args[0]
+                    }
+                }
             }
 
             case "remove": {
                 let query = args[0] == "user" ? args[2].replace(/\s*@\s*/g, '').toLowerCase() : args[2];
                 let rawData = args[0] == "user" ? await getUser(query, "login") : await getLevel(query);
 
-                if (!rawData) return `An error occurred fetching ${args[0]} data. Please try again.`;
-                else if (args[0] == "user" ? !rawData.data.length : rawData == "-1") return `That ${args[0]} doesn't exist.`;
+                if (!rawData) return { path: "blacklist.error", data: { type: args[0] } };
+                else if (args[0] == "user" ? !rawData.data.length : rawData == "-1") return { path: "blacklist.not_found", data: { type: args[0] } };
 
                 let idx: number;
                 let data: any;
@@ -75,7 +80,7 @@ export = class BlacklistCommand extends BaseCommand {
                     };
 
                     idx = blacklist.users.findIndex(u => u.userId == data.userId);
-                    if (idx == -1) return "That user isn't blacklisted.";
+                    if (idx == -1) return { path: "blacklist.not_bl", data: { type: args[0] } };
 
                     blacklist.users.splice(idx, 1);
                     str = data.userName;
@@ -83,32 +88,36 @@ export = class BlacklistCommand extends BaseCommand {
                     data = client.req.parseLevel(rawData);
 
                     idx = blacklist.levels?.findIndex(l => l.id == data.id);
-                    if (idx == -1) return "That level isn't blacklisted.";
+                    if (idx == -1) return { path: "blacklist.not_bl", data: { type: args[0] } };
 
                     blacklist.levels.splice(idx, 1);
                     str = `'${data.name}' (${data.id}) by ${data.creator}`;
                 }
 
                 await client.db.save("blacklist", blacklist);
-                `Removed ${str} from the ${args[0]} blacklist.`;
-                break;
+                return {
+                    path: "blacklist.remove",
+                    data: {
+                        str,
+                        type: args[0]
+                    }
+                }
             }
 
             case "clear": {
                 await client.db.save("blacklist", args[0] == "user" ? { users: [] } : { levels: [] });
 
-                `Cleared the ${args[0]} blacklist.`;
-                break;
+                return { path: "blacklist.clear", data: { type: args[0] } };
             }
 
             case "list": {
                 let page = parseInt(args[2]);
                 if (args[2] && isNaN(page))
-                    return "Kappa Sir that's not a number.";
+                    return { path: "generic.nan" };
 
                 let bl = args[0] == "user" ? blacklist.users : blacklist.levels;
 
-                if (!bl?.length) return `The ${args[0]} blacklist is empty.`;
+                if (!bl?.length) return { path: "blacklist.empty", data: { type: args[0] } };
 
                 let pages = [];
                 let done = false;
@@ -135,9 +144,18 @@ export = class BlacklistCommand extends BaseCommand {
                 }
 
                 if (page > pages.length)
-                    return "Kappa There aren't that many pages.";
+                    return { path: "generic.page_overflow" };
 
-                return `Page ${page || "1"} of ${pages.length} (${bl.length} ${args[0]}s) | ${pages[page ? page-1 : 0].join(" - ")}`;
+                return {
+                    path: "blacklist.list",
+                    data: {
+                        page: page || "1",
+                        pages: pages.length,
+                        size: bl.length,
+                        type: args[0],
+                        list: pages[page ? page-1 : 0].join(" - ")
+                    }
+                }
             }
         }
     }
