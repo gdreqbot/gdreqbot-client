@@ -30,7 +30,7 @@ export default class {
                 return reject("No secret");
             }
 
-            this.ws = new WebSocket(`ws://${hostname}:${port}`);
+            this.ws = new WebSocket(process.env.WS_URL);
 
             this.ws.on('open', () => {
                 const session: Session = this.db.load("session");
