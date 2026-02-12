@@ -62,8 +62,6 @@ class Gdreqbot extends ChatClient {
         });
 
         this.onMessage(async (channel, user, text, msg) => {
-            if (msg.userInfo.userId == this.config.botId && process.env.ENVIRONMENT != "dev") return;
-
             let globalBl = await getBlacklist(msg.userInfo.userId, "users");
             if (globalBl) return;
 
@@ -72,8 +70,7 @@ class Gdreqbot extends ChatClient {
             let sets: Settings = this.db.load("settings");
             let perms: Perm[] = this.db.load("perms").perms;
 
-            if (msg.userInfo.userId == config.ownerId) userPerms = PermLevels.DEV;
-            else if (msg.userInfo.isBroadcaster) userPerms = PermLevels.STREAMER;
+            if (msg.userInfo.isBroadcaster) userPerms = PermLevels.STREAMER;
             else if (msg.userInfo.isMod) userPerms = PermLevels.MOD;
             else if (msg.userInfo.isVip) userPerms = PermLevels.VIP;
             else if (msg.userInfo.isSubscriber) userPerms = PermLevels.SUB;
@@ -127,7 +124,7 @@ class Gdreqbot extends ChatClient {
 
             if (!cmd || !cmd.config.enabled) return;
 
-            if (!cmd.config.supportsSilent && sets.silent_mode && userPerms < PermLevels.DEV) return;
+            if (!cmd.config.supportsSilent && sets.silent_mode) return;
 
             let customPerm = perms?.find(p => p.cmd == cmd.info.name);
             if ((customPerm?.perm || cmd.config.permLevel) > userPerms) return;

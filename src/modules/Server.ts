@@ -281,8 +281,6 @@ export default class {
             let setData: any = this.getSettings(sets);
 
             this.client.commands.forEach(cmd => {
-                if (cmd.config.permLevel == PermLevels.DEV) return;
-
                 let permData = perms.find(p => p.cmd == cmd.info.name);
 
                 let toPush = {

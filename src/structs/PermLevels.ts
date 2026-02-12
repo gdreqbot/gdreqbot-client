@@ -4,8 +4,7 @@ enum PermLevels {
     SUB,
     VIP,
     MOD,
-    STREAMER,
-    DEV
+    STREAMER
 };
 
 export default PermLevels;
