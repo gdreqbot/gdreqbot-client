@@ -1,5 +1,24 @@
 import superagent from "superagent";
 import { User } from "../structs/user";
+import Logger from "../modules/Logger";
+
+export async function checkServer(logger: Logger) {
+    for (let i = 0; i < 4; i++) {
+        try {
+            await superagent
+                .get(`${process.env.URL}/health`)
+                .timeout(2000);
+
+            logger.log("Remote Server is online");
+            return true;
+        } catch {
+            logger.log(`Waiting for remote server... (${i+1}/4)`);
+            await new Promise(res => setTimeout(res, 1000));
+        }
+    }
+    
+    return false;
+}
 
 export async function getBlacklist(query: string, type: "users" | "levels"): Promise<boolean|null> {
     try {

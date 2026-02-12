@@ -75,7 +75,11 @@ export default class {
             renderView(req, res, 'index');
         });
 
-        server.get('/auth', (req, res, next) => {
+        server.get('/auth', async (req, res, next) => {
+            let serverStatus = await gdreqbot.checkServer(this.logger);
+            if (!serverStatus)
+                return res.redirect('/offline');
+
             const redirect = `http://127.0.0.1:${this.port}/auth/callback`;
             const url = `${process.env.URL}/auth?redirect_uri=${encodeURIComponent(redirect)}`;
 
@@ -89,6 +93,7 @@ export default class {
 
             try {
                 let user = await gdreqbot.getUser(secret.toString(), require('../../package.json').version);
+                if (!user) return;
 
                 await this.db.save("session", {
                     userId: user.userId,
@@ -105,6 +110,8 @@ export default class {
 
                 this.client = new Gdreqbot(this.db, this.socket);
                 this.client.connect();
+
+                this.checkAuth();
 
                 res.redirect('/dashboard');
             } catch (e) {
@@ -489,6 +496,10 @@ export default class {
             res.status(200).json({ success: true });
         });
 
+        server.get('/login', async (req, res) => {
+            res.render('loading');
+        });
+
         server.get('/logout', async (req, res, next) => {
             const session: Session = this.db.load("session");
             if (session) {
@@ -545,11 +556,15 @@ export default class {
         }
     }
 
-    private checkAuth(req: Request, res: Response, next: NextFunction) {
-        if (req.isAuthenticated())
-            return next();
-
-        res.redirect('/');
+    private checkAuth() {
+        setInterval(async () => {
+            try {
+                let session: Session = this.db.load("session");
+                await gdreqbot.getUser(session?.secret, require('../../package.json').version);
+            } catch {
+                this.failure = true;
+            }
+        }, 5*60*1000); // 5 min
     }
 
     private getSettings(sets: any) {
