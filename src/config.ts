@@ -1,3 +1,4 @@
 export default {
-    prefix: process.env.PREFIX
+    prefix: process.env.PREFIX,
+    botId: process.env.BOT_ID
 };

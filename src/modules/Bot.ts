@@ -62,6 +62,8 @@ class Gdreqbot extends ChatClient {
         });
 
         this.onMessage(async (channel, user, text, msg) => {
+            if (msg.userInfo.userId == config.botId) return;
+
             let globalBl = await getBlacklist(msg.userInfo.userId, "users");
             if (globalBl) return;
 

@@ -83,6 +83,8 @@ export = class ReqCommand extends BaseCommand {
                             pos: client.db.load("levels").levels.length
                         }
                     }
+                else
+                    break;
             }
 
             default:

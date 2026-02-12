@@ -75,14 +75,18 @@ export default class {
                 }
             });
 
-            this.ws.on('close', () => {
+            this.ws.on('close', (code, reason) => {
                 this.connected = false;
-                this.logger.log("Closing Socket...");
+                this.logger.log(`Closing Socket... (${code}|${reason})`);
             });
 
             this.ws.on('error', err => {
                 console.error(err);
                 this.logger.error('Error occurred');
+            });
+
+            this.ws.on('ping', () => {
+                this.ws.pong();
             });
         });
     }
