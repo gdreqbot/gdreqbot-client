@@ -1,5 +1,4 @@
 import { ChatClient, ChatClientOptions } from "@twurple/chat";
-import MapDB from "@galaxy05/map.db";
 
 import BaseCommand, { Response } from "../structs/BaseCommand";
 import CommandLoader from "../modules/CommandLoader";
@@ -7,15 +6,15 @@ import Logger from "../modules/Logger";
 import Database from "../modules/Database";
 import Request from "../modules/Request";
 import config from "../config";
-import { unlink } from "original-fs";
+import superagent from "superagent";
 import fs from "fs";
 import PermLevels from "../structs/PermLevels";
 import { Blacklist } from "../datasets/blacklist";
 import { Settings } from "../datasets/settings";
 import { Perm } from "../datasets/perms";
-import { RefreshingAuthProvider } from "@twurple/auth";
 import { Session } from "../datasets/session";
 import Socket from "./Socket";
+import { getBlacklist } from "../apis/gdreqbot";
 
 class Gdreqbot extends ChatClient {
     commands: Map<string, BaseCommand>;
@@ -27,28 +26,13 @@ class Gdreqbot extends ChatClient {
     config: typeof config;
     socket: Socket;
 
-    constructor(db: Database, socket: Socket, options?: ChatClientOptions) {
-        //const tokenData = JSON.parse(fs.readFileSync(`./tokens.${config.botId}.json`, "utf-8"));
-        //const authProvider = new RefreshingAuthProvider({
-        //    clientId: config.clientId,
-        //    clientSecret: config.clientSecret
-        //});
-
-        //authProvider.addUser(config.botId, tokenData);
-        //authProvider.addIntentsToUser(config.botId, ["chat"]);
-        //
-        //authProvider.onRefresh((userId, newTokenData) => {
-        //    fs.writeFileSync(`./tokens.${userId}.json`, JSON.stringify(newTokenData, null, 4), "utf-8");
-        //    this.logger.log("Refreshing token...");
-        //});
-        
+    constructor(db: Database, socket: Socket, options?: ChatClientOptions) { 
         const session: Session = db.load("session");
         if (!session?.secret)
             throw new Error('No session secret');
 
         super({
             ...options,
-            //authProvider,
             channels: [session.userName]
         });
 
@@ -64,29 +48,26 @@ class Gdreqbot extends ChatClient {
         this.loadCommands();
 
         this.onConnect(() => {
-            this.logger.log("Ready");
-            this.logger.log(`Joining <channel>.`);
+            this.logger.ready("Ready");
+            this.logger.ready(`Joining channel: ${session.userName}`);
         });
 
         this.onDisconnect(() => this.logger.log("Disconnecting..."));
 
         this.onJoinFailure(async (channel, reason) => {
-            // todo
+            this.logger.error(`Failed to join channel: ${channel} for reason: ${reason}`);
         });
 
         this.onMessage(async (channel, user, text, msg) => {
-            //console.log(text)
-            //if (msg.userInfo.userId == this.config.botId && process.env.ENVIRONMENT != "dev") return;
+            if (msg.userInfo.userId == this.config.botId && process.env.ENVIRONMENT != "dev") return;
 
-            //await this.db.setDefault({ channelId: msg.channelId, channelName: channel });
+            let globalBl = await getBlacklist(msg.userInfo.userId, "users");
+            if (globalBl) return;
 
             let userPerms: PermLevels;
             let blacklist: Blacklist = this.db.load("blacklist");
             let sets: Settings = this.db.load("settings");
             let perms: Perm[] = this.db.load("perms").perms;
-            //let globalUserBl: string[] = this.blacklist.get("users");
-
-            //if (globalUserBl?.includes(msg.userInfo.userId)) return;
 
             if (msg.userInfo.userId == config.ownerId) userPerms = PermLevels.DEV;
             else if (msg.userInfo.isBroadcaster) userPerms = PermLevels.STREAMER;
@@ -106,18 +87,26 @@ class Gdreqbot extends ChatClient {
 
                 try {
                     let notes = text.replace(isId[0], "").replaceAll(/\s+/g, " ");
-                    let res: Response | void = await this.commands.get("req").run(this, msg, [isId[0], notes.length > 1 ? notes : null], { auto: true, silent: sets.silent_mode });
+                    let res: Response | void = await this.commands.get("req").run(this, msg, channel, [isId[0], notes.length > 1 ? notes : null], { auto: true, silent: sets.silent_mode });
 
                     if (res) {
-                        this.socket.ws.send(JSON.stringify(res));
+                        this.socket.ws.send(
+                            JSON.stringify({
+                                res,
+                                msgId: msg.id
+                            })
+                        );
                     }
                 } catch (e) {
                     this.socket.ws.send(
                         JSON.stringify({
-                            path: "generic.cmd_error",
-                            data: {
-                                cmd: "req"
-                            }
+                            res: {
+                                path: "generic.cmd_error",
+                                data: {
+                                    cmd: "req"
+                                }
+                            },
+                            msgId: msg.id
                         })
                     );
                     this.logger.error(e);
@@ -142,18 +131,26 @@ class Gdreqbot extends ChatClient {
 
             try {
                 this.logger.log(`${sets.silent_mode ? "(silent) " : ""}Running command: ${cmd.info.name} in channel: ${channel}`);
-                let res: Response | void = await cmd.run(this, msg, args, { userPerms, silent: sets.silent_mode });
+                let res: Response | void = await cmd.run(this, msg, channel, args, { userPerms, silent: sets.silent_mode });
 
                 if (res) {
-                    this.socket.ws.send(JSON.stringify(res));
+                    this.socket.ws.send(
+                        JSON.stringify({
+                            res,
+                            msgId: msg.id
+                        })
+                    );
                 }
             } catch (e) {
                 this.socket.ws.send(
                     JSON.stringify({
-                        path: "generic.cmd_error",
-                        data: {
-                            cmd: cmd.info.name
-                        }
+                        res: {
+                            path: "generic.cmd_error",
+                            data: {
+                                cmd: cmd.info.name
+                            }
+                        },
+                        msgId: msg.id
                     })
                 );
                 this.logger.error(e);

@@ -17,7 +17,7 @@ export = class PosCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[]): Promise<Response> {
         let levels: LevelData[] = client.db.load("levels").levels;
         let sets: Settings = client.db.load("settings");
 

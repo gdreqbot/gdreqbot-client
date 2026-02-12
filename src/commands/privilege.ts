@@ -16,7 +16,7 @@ export = class PrivilegeCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { userPerms: PermLevels, auto: boolean, silent: boolean }): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { userPerms: PermLevels, auto: boolean, silent: boolean }): Promise<Response> {
         if (!args.length)
             return { path: "privilege.no_cmd" };
 
@@ -33,13 +33,15 @@ export = class PrivilegeCommand extends BaseCommand {
         if (!cmd.config.supportsSilent && opts.silent) return;
 
         try {
-            client.logger.log(`(auto) Running command: ${cmd.info.name} in channel: <channel> in privilege mode`);
-            await cmd.run(client, msg, newArgs, {
+            client.logger.log(`(auto) Running command: ${cmd.info.name} in channel: ${channel} in privilege mode`);
+            let res = await cmd.run(client, msg, channel, newArgs, {
                 userPerms: opts.userPerms,
                 auto: opts.auto,
                 silent: opts.silent,
                 privilegeMode: true
             });
+
+            if (res) return res;
         } catch (e) {
             console.error(e);
             return { path: "generic.error" };

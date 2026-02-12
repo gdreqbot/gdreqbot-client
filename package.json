@@ -1,12 +1,12 @@
 {
   "name": "gdreqbot",
-  "version": "4.0.1",
+  "version": "1.0.0",
   "description": "Early stage Geometry Dash level requests",
   "main": "dist/core.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "deploy": "tsc && electron .",
+    "deploy": "tsc && electron-forge start",
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make"

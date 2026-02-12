@@ -19,7 +19,7 @@ export = class HelpCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { userPerms: PermLevels, privilegeMode: boolean }): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { userPerms: PermLevels, privilegeMode: boolean }): Promise<Response> {
         let cmd = client.commands.get(args[0])
             || client.commands.values().find(c => c.config.aliases.includes(args[0]));
 

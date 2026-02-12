@@ -18,7 +18,7 @@ export = class BlacklistCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[]): Promise<Response> {
         let blacklist: Blacklist = client.db.load("blacklist");
 
         if (!args.length || (!["user", "level"].includes(args[0]))) return { path: "blacklist.invalid_bl" };

@@ -17,7 +17,7 @@ export = class RandomCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean, silent: boolean }): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { auto: boolean, silent: boolean }): Promise<Response> {
         let toggle = await client.req.toggle(client, "random");
 
         if (opts.silent) return;

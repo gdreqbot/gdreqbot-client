@@ -17,7 +17,7 @@ export = class ReqCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean, silent: boolean }): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { auto: boolean, silent: boolean }): Promise<Response> {
         if (!args.length) {
             if (!opts.silent)
                 return { path: "req.no_query" };
@@ -46,7 +46,7 @@ export = class ReqCommand extends BaseCommand {
                 if (!opts.silent) return { path: opts.auto ? "req.not_found.id" : "req.not_found.query" };
 
             case ResCode.ALREADY_ADDED:
-                if (!opts.silent) return { path: "already_added" };
+                if (!opts.silent) return { path: "req.already_added" };
 
             case ResCode.MAX_PER_USER:
                 if (!opts.silent) return { path: "req.max_per_user", data: { max_levels_per_user: sets.max_levels_per_user } };
@@ -64,11 +64,14 @@ export = class ReqCommand extends BaseCommand {
             case ResCode.BLACKLISTED:
                 if (!opts.silent) return { path: "req.blacklisted" };
 
+            case ResCode.GLOBAL_BL:
+                break;
+
             case ResCode.ERROR:
                 return { path: "generic.error" };
 
             case ResCode.OK: {
-                if (opts.auto) client.logger.log(`Added level in channel: <channel>`);
+                if (opts.auto) client.logger.log(`Added level in channel: ${channel}`);
 
                 if (!opts.silent)
                     return {

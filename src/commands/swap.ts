@@ -17,7 +17,7 @@ export = class SwapCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[]): Promise<Response> {
         if (args?.length < 2) return { path: "swap.no_args" };
         let query: string[] = [];
         let separator = "";

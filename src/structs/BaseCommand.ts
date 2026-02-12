@@ -24,7 +24,7 @@ class BaseCommand {
         this.config = { aliases, cooldown, enabled, permLevel, supportsPrivilege, supportsSilent };
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args?: string[], opts?: { userPerms?: PermLevels, privilegeMode?: boolean, auto?: boolean, silent?: boolean }): Promise<Response|void> {}
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args?: string[], opts?: { userPerms?: PermLevels, privilegeMode?: boolean, auto?: boolean, silent?: boolean }): Promise<Response|void> {}
 }
 
 interface Info {

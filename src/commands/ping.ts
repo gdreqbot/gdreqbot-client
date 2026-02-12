@@ -13,7 +13,7 @@ export = class PingCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { privilegeMode: boolean }): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { privilegeMode: boolean }): Promise<Response> {
         return { path: opts.privilegeMode ? "ping.alt" : "ping.base" };
     }
 }

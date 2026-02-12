@@ -3,6 +3,7 @@ import { LevelData } from "../datasets/levels";
 import { User } from "../structs/user";
 import { Settings } from "../datasets/settings";
 import * as gd from "../apis/gd";
+import { getBlacklist } from "../apis/gdreqbot";
 
 class Request {
     parseLevel(raw: string, user?: User, notes?: string): LevelData {
@@ -28,8 +29,10 @@ class Request {
             else if (raw == "-1") return { status: ResCode.NOT_FOUND };
 
             let newLvl = this.parseLevel(raw, user, notes);
-            //if (bl?.length && bl.includes(newLvl.id))
-            //    return { status: ResCode.GLOBAL_BL };
+            let globalBl = await getBlacklist(newLvl.id, "levels");
+            if (globalBl)
+                return { status: ResCode.GLOBAL_BL };
+
             if (blacklisted?.find(l => l.id == newLvl.id))
                 return { status: ResCode.BLACKLISTED };
 

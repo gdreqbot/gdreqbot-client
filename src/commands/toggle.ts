@@ -12,11 +12,12 @@ export = class ToggleCommand extends BaseCommand {
             category: "requests",
             aliases: ["t"],
             enabled: true,
-            permLevel: PermLevels.MOD
+            permLevel: PermLevels.MOD,
+            supportsSilent: true
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean, silent: boolean }): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { auto: boolean, silent: boolean }): Promise<Response> {
         let sets: Settings = client.db.load("settings", );
         let toggle = await client.req.toggle(client, "queue");
 

@@ -15,7 +15,7 @@ export = class InfoCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[]): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[]): Promise<Response> {
         let res = client.req.getLevel(client, args.join(" "));
 
         switch (res.status) {

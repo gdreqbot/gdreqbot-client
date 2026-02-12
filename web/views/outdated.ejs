@@ -1,0 +1,14 @@
+<%- include('components/header') %>
+    <section class="section">
+        <div class="container">
+            <h1 class="title">Outdated client!</h1>
+            <hr>
+            <p class="subtitle">You are running an outdated version of gdreqbot</p>
+            <p>Your version: <code class="has-text-warning"><%= version %></code></p>
+            <p>Upstream: <code class="has-text-primary"><%= upstream %></code></p>
+            <br>
+            <p>Please download the latest gdreqbot here: <a href="https://gdreqbot.ddns.net" target="_blank">https://gdreqbot.ddns.net</a></p>
+            <p>(Auto updates in the future)</p>
+        </div>
+    </section>
+<%- include('components/footer') %>

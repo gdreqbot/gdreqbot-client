@@ -18,7 +18,7 @@ export = class NextCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean, silent: boolean }): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { auto: boolean, silent: boolean }): Promise<Response> {
         //if (!opts.auto) {
         //    let updateUsers: User[] = updatedb.get("updateUsers");
         //    let updateUser: User = updateUsers.find((u: User) => u.userId == msg.userInfo.userId);

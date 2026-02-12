@@ -7,16 +7,13 @@ import bodyParser from "body-parser";
 import { v4 as uuid } from "uuid";
 import path from 'path';
 import multer from "multer";
-import moment from "moment";
 import "moment-duration-format";
-import fs from "fs";
-import superagent from "superagent";
 import Gdreqbot from '../modules/Bot';
 import { User } from "../structs/user";
 import { Settings } from "../datasets/settings";
 import { Perm } from "../datasets/perms";
 import PermLevels from "../structs/PermLevels";
-import BaseCommand from "../structs/BaseCommand";
+import BaseCommand, { Response as CmdResponse } from "../structs/BaseCommand";
 import { Blacklist } from "../datasets/blacklist";
 import { getUser } from "../apis/twitch";
 import { LevelData } from "../datasets/levels";
@@ -26,8 +23,8 @@ import { Server } from "http";
 import { Session } from "../datasets/session";
 import Logger from "./Logger";
 import Database from "./Database";
-import config from "../config";
 import Socket from "./Socket";
+import * as gdreqbot from "../apis/gdreqbot";
 
 export default class {
     app: Express;
@@ -37,6 +34,7 @@ export default class {
     port: number;
     logger: Logger;
     db: Database;
+    failure = false;
 
     constructor(db: Database) {
         this.app = express();
@@ -78,15 +76,10 @@ export default class {
         });
 
         server.get('/auth', (req, res, next) => {
-            //let redirectTo = req.query.redirectTo || 'dashboard';
             const redirect = `http://127.0.0.1:${this.port}/auth/callback`;
             const url = `${process.env.URL}/auth?redirect_uri=${encodeURIComponent(redirect)}`;
 
             res.redirect(url);
-
-            //passport.authenticate('twitch', {
-            //    state: redirectTo as string
-            //})(req, res, next);
         });
 
         server.get('/auth/callback', async (req, res) => {
@@ -94,33 +87,47 @@ export default class {
             if (!secret)
                 return res.status(400).send('Missing secret');
 
-            const user = await superagent
-                .get(`${process.env.URL}/api/me`)
-                .set('Authorization', `Bearer ${secret}`);
+            try {
+                let user = await gdreqbot.getUser(secret.toString(), require('../../package.json').version);
 
-            console.log(user.body);
+                await this.db.save("session", {
+                    userId: user.userId,
+                    userName: user.userName,
+                    secret
+                });
 
-            await this.db.save("session", {
-                userId: user.body.userId,
-                userName: user.body.userName,
-                secret
-            });
+                this.socket = new Socket(this.db, this);
+                try {
+                    await this.socket.connect();
+                } catch (e) {
+                    this.logger.warn(e);
+                }
 
-            this.socket = new Socket(db);
-            this.client = new Gdreqbot(db, this.socket);
-            this.client.connect();
+                this.client = new Gdreqbot(this.db, this.socket);
+                this.client.connect();
 
-            res.redirect('/dashboard');
+                res.redirect('/dashboard');
+            } catch (e) {
+                switch (e.message) {
+                    case "Outdated client": {
+                        this.logger.warn("Outdated client");
+                        res.redirect(`/outdated?upstream=${encodeURIComponent(e.upstream)}`);
+                        break;
+                    }
 
+                    case "Blacklisted": {
+                        this.logger.warn("Blacklisted");
+                        res.redirect('/auth/error');
+                        break;
+                    }
 
-            //let redirectTo = req.query.state;
-
-            //if (redirectTo == 'add')
-            //    res.redirect('/auth/success');
-            //else if (redirectTo == 'dashboard')
-            //    res.redirect('/dashboard');
-            //else
-            //    res.redirect('/');
+                    default: {
+                        this.logger.warn("Unauthorized");
+                        res.status(401).send(e.message);
+                        break;
+                    }
+                }
+            }
         });
 
         server.get('/auth/success', (req, res) => {
@@ -136,10 +143,17 @@ export default class {
         });
 
         server.get('/dashboard/requests', /* this.checkAuth, */async (req, res) => {
+            if (this.failure)
+                return res.redirect('/error');
+
+            if (!this.socket?.connected) {
+                this.socket = null;
+                return res.redirect('/');
+            }
+
             const session: Session = this.db.load("session");
             const userId = session.userId;
             const userName = session.userName;
-            //await this.db.setDefault({ channelId: userId, channelName: userName });
 
             let levels: LevelData[] = this.db.load("levels").levels;
             let sets: Settings = this.db.load("settings");
@@ -161,6 +175,14 @@ export default class {
         });
 
         server.post('/dashboard/requests', multer().none(), async (req, res) => {
+            if (this.failure)
+                return res.redirect('/error');
+
+            if (!this.socket?.connected) {
+                this.socket = null;
+                return res.redirect('/');
+            }
+
             const session: Session = this.db.load("session");
             const userId = session.userId;
             const userName = session.userName;
@@ -204,22 +226,43 @@ export default class {
             }
 
             try {
-                await cmd.run(this.client, { channelId: userId } as any, args, { auto: true, silent: sets.silent_mode });
                 this.logger.log(`(auto) Running command: ${cmd.info.name} in channel: ${userName}`);
+                let res: CmdResponse | void = await cmd.run(this.client, { channelId: userId } as any, userName, args, { auto: true, silent: sets.silent_mode });
+
+                if (res) {
+                    this.socket.ws.send(
+                        JSON.stringify({
+                            res
+                        })
+                    );
+                }
             } catch (e) {
-                this.client.say(userName, `An error occurred running command: ${cmd.info.name}. If the issue persists, please contact the developer.`);
-                console.error(e);
+                this.socket.ws.send(
+                    JSON.stringify({
+                        res: "generic.cmd_error",
+                        data: {
+                            cmd: cmd.info.name
+                        }
+                    })
+                );
+                this.logger.log(e);
             }
 
             res.status(200).json({ success: true });
         });
 
         server.get('/dashboard/configuration', async (req, res) => {
+            if (this.failure)
+                return res.redirect('/error');
+
+            if (!this.socket?.connected) {
+                this.socket = null;
+                return res.redirect('/');
+            }
+
             const session: Session = this.db.load("session");
             const userId = session.userId;
             const userName = session.userName;
-
-            //await this.db.setDefault({ channelId: userId, channelName: userName });
 
             let sets: Settings = this.db.load("settings");
             let perms: Perm[] = this.db.load("perms").perms;
@@ -264,6 +307,14 @@ export default class {
         });
 
         server.post('/dashboard/configuration', multer().none(), async (req, res) => {
+            if (this.failure)
+                return res.redirect('/error');
+
+            if (!this.socket?.connected) {
+                this.socket = null;
+                return res.redirect('/');
+            }
+
             const session: Session = this.db.load("session");
             const userId = session.userId;
             const userName = session.userName;
@@ -432,8 +483,6 @@ export default class {
         });
 
         server.get('/dashboard/hide', multer().none(), async (req, res) => {
-            //await this.db.setDefault({ channelId: userId, channelName: userName });
-
             let sets: Settings = this.db.load("settings");
             if (!sets.hide_note) await this.db.save("settings", { hide_note: true });
 
@@ -449,6 +498,26 @@ export default class {
             }
 
             res.redirect('/');
+        });
+
+        server.get('/offline', (req, res) => {
+            res.render('offline');
+        });
+
+        server.get('/outdated', (req, res) => {
+            res.render('outdated', {
+                version: require('../../package.json').version,
+                upstream: req.query.upstream
+            });
+        });
+
+        server.get('/error', (req, res) => {
+            res.render('error');
+        });
+
+        server.get('/failure', (req, res) => {  // if you found this congrats you can now quit the bot whenever you want
+            this.client.quit();
+            res.status(200).json({ text: "ok" });
         });
     }
 

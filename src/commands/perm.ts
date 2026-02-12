@@ -19,7 +19,7 @@ export = class PermCommand extends BaseCommand {
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { userPerms: PermLevels, privilegeMode: boolean }): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { userPerms: PermLevels, privilegeMode: boolean }): Promise<Response> {
         if (!opts.privilegeMode)
             return { path: "perm.base", data: { perm: PermLevels[opts.userPerms] } };
 

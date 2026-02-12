@@ -11,11 +11,12 @@ export = class SilentCommand extends BaseCommand {
             category: "requests",
             aliases: ["silent-mode", "silentmode", "togglesilent", "togglesilentmode"],
             enabled: true,
-            permLevel: PermLevels.MOD
+            permLevel: PermLevels.MOD,
+            supportsSilent: true
         });
     }
 
-    async run(client: Gdreqbot, msg: ChatMessage, args: string[], opts: { auto: boolean }): Promise<Response> {
+    async run(client: Gdreqbot, msg: ChatMessage, channel: string, args: string[], opts: { auto: boolean }): Promise<Response> {
         let toggle = await client.req.toggle(client, "silent");
 
         return { path: toggle ? "silent.enabled" : "silent.disabled" };
