@@ -6,7 +6,6 @@ import Logger from "../modules/Logger";
 import Database from "../modules/Database";
 import Request from "../modules/Request";
 import config from "../config";
-import superagent from "superagent";
 import fs from "fs";
 import PermLevels from "../structs/PermLevels";
 import { Blacklist } from "../datasets/blacklist";
@@ -15,6 +14,10 @@ import { Perm } from "../datasets/perms";
 import { Session } from "../datasets/session";
 import Socket from "./Socket";
 import { getBlacklist } from "../apis/gdreqbot";
+
+import { app } from "electron";
+import { join } from "path";
+const DEV = !app.isPackaged;
 
 class Gdreqbot extends ChatClient {
     commands: Map<string, BaseCommand>;
@@ -159,7 +162,7 @@ class Gdreqbot extends ChatClient {
     }
 
     loadCommands() {
-        const cmdFiles = fs.readdirSync("./dist/commands/").filter(f => f.endsWith(".js"));
+        const cmdFiles = fs.readdirSync(DEV ? "./dist/commands/" : join(process.resourcesPath, "dist/commands")).filter(f => f.endsWith(".js"));
 
         for (const file of cmdFiles) {
             const res = this.cmdLoader.load(this, file);

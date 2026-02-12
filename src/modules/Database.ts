@@ -1,15 +1,17 @@
 import MapDB from "@galaxy05/map.db";
-import { app } from "electron";
 import { readdirSync } from "fs";
 import Logger from "./Logger";
+
+import { app } from "electron";
+const DEV = !app.isPackaged;
 
 class Database {
     private db: MapDB;
     private logger: Logger;
 
     constructor(filename: string) {
-        //this.db = new MapDB(filename, { path: app.getPath("userData") });
-        this.db = new MapDB(filename);
+        this.db = new MapDB(filename, { path: DEV ? "." : app.getPath("userData") });
+        //this.db = new MapDB(filename);
         this.logger = new Logger("Database");
     }
 

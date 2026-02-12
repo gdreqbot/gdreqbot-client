@@ -26,6 +26,9 @@ import Database from "./Database";
 import Socket from "./Socket";
 import * as gdreqbot from "../apis/gdreqbot";
 
+import { app } from "electron";
+const DEV = !app.isPackaged;
+
 export default class {
     app: Express;
     private client: Gdreqbot;
@@ -45,7 +48,10 @@ export default class {
 
         const server = this.app;
 
-        server.use('/public', express.static(path.resolve(__dirname, '../../web/public')));
+        const publicPath = DEV ? path.resolve(__dirname, '../../web/public') : path.join(process.resourcesPath, 'web/public');
+        const viewsPath = DEV ? path.resolve(__dirname, '../../web/views') : path.join(process.resourcesPath, 'web/views');
+
+        server.use('/public', express.static(publicPath));
         server.use(express.json());
         server.use(express.urlencoded({ extended: false }));
         server.use(
@@ -59,20 +65,20 @@ export default class {
             }),
         );
         server.use(bodyParser.json());
-        server.set('views', path.join(__dirname, '../../web/views'));
+        server.set('views', viewsPath);
 
         server.set('view engine', 'ejs');
 
-        const renderView = (req: Request, res: Response, view: string, data: any = {}) => {
-            const baseData = {
-                bot: this.client,
-                path: req.path,
-            };
-            res.render(path.resolve(`./web/views/${view}`), Object.assign(baseData, data));
-        };
+        // const renderView = (req: Request, res: Response, view: string, data: any = {}) => {
+        //     const baseData = {
+        //         bot: this.client,
+        //         path: req.path,
+        //     };
+        //     res.render(path.resolve(`./web/views/${view}`), Object.assign(baseData, data));
+        // };
 
         server.get('/', (req, res) => {
-            renderView(req, res, 'index');
+            res.render('index');
         });
 
         server.get('/auth', async (req, res, next) => {
@@ -137,12 +143,8 @@ export default class {
             }
         });
 
-        server.get('/auth/success', (req, res) => {
-            renderView(req, res, 'authsuccess');
-        });
-
         server.get('/auth/error', (req, res) => {
-            renderView(req, res, 'autherror');
+            res.render('autherror');
         });
 
         server.get('/dashboard', (req, res) => {

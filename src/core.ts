@@ -1,11 +1,15 @@
+import { join } from "path";
+
 import dotenv from "dotenv";
-dotenv.config({ quiet: true });
+dotenv.config({ quiet: true, path: join(process.resourcesPath, ".env") });
 
 import Logger from "./modules/Logger";
 import Server from "./modules/Server";
 
 import { app, BrowserWindow } from "electron";
 import Database from "./modules/Database";
+
+if (require('electron-squirrel-startup')) app.quit();
 
 const logger = new Logger("CORE");
 
@@ -16,9 +20,9 @@ const server = new Server(database);
 
 const createWindow = () => {
     return new BrowserWindow({
-        width: 800,
-        height: 600,
-        icon: "./assets/gdreqbot",
+        width: 1024,
+        height: 768,
+        icon: join(__dirname, "../assets/gdreqbot.ico"),
         autoHideMenuBar: true
     });
 }
@@ -26,8 +30,6 @@ const createWindow = () => {
 app.whenReady().then(async () => {
     try {
         const win = createWindow();
-        win.loadFile("./web/views/loading.html");
-
         let { port } = await server.run();
 
         win.loadURL(`http://127.0.0.1:${port}`);

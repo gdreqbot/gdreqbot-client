@@ -1,9 +1,16 @@
 const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
+const { join } = require('path');
 
 module.exports = {
   packagerConfig: {
     asar: true,
+    icon: join(__dirname, "./assets/gdreqbot"),
+    extraResource: [
+      join(__dirname, "./.env"),
+      join(__dirname, "./web"),
+      join(__dirname, "./dist")
+    ]
   },
   rebuildConfig: {},
   makers: [
