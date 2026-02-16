@@ -38,6 +38,7 @@ export default class {
     logger: Logger;
     db: Database;
     failure = false;
+    authIntervalId: ReturnType<typeof setInterval>;
 
     constructor(db: Database) {
         this.app = express();
@@ -117,7 +118,7 @@ export default class {
                 this.client = new Gdreqbot(this.db, this.socket);
                 this.client.connect();
 
-                this.checkAuth();
+                this.authIntervalId = this.checkAuth();
 
                 res.redirect('/dashboard');
             } catch (e) {
@@ -152,15 +153,13 @@ export default class {
         });
 
         server.get('/dashboard/requests', /* this.checkAuth, */async (req, res) => {
-            if (this.failure)
-                return res.redirect('/error');
-
-            if (!this.socket?.connected) {
-                this.socket = null;
+            if (this.failure || !this.socket?.connected) {
                 return res.redirect('/');
             }
 
             const session: Session = this.db.load("session");
+            if (!session) return res.redirect('/error');
+
             const userId = session.userId;
             const userName = session.userName;
 
@@ -184,15 +183,13 @@ export default class {
         });
 
         server.post('/dashboard/requests', multer().none(), async (req, res) => {
-            if (this.failure)
-                return res.redirect('/error');
-
-            if (!this.socket?.connected) {
-                this.socket = null;
+            if (this.failure || !this.socket?.connected) {
                 return res.redirect('/');
             }
 
             const session: Session = this.db.load("session");
+            if (!session) return res.redirect('/error');
+
             const userId = session.userId;
             const userName = session.userName;
 
@@ -261,15 +258,13 @@ export default class {
         });
 
         server.get('/dashboard/configuration', async (req, res) => {
-            if (this.failure)
-                return res.redirect('/error');
-
-            if (!this.socket?.connected) {
-                this.socket = null;
+            if (this.failure || !this.socket?.connected) {
                 return res.redirect('/');
             }
 
             const session: Session = this.db.load("session");
+            if (!session) return res.redirect('/error');
+
             const userId = session.userId;
             const userName = session.userName;
 
@@ -314,15 +309,13 @@ export default class {
         });
 
         server.post('/dashboard/configuration', multer().none(), async (req, res) => {
-            if (this.failure)
-                return res.redirect('/error');
-
-            if (!this.socket?.connected) {
-                this.socket = null;
+            if (this.failure || !this.socket?.connected) {
                 return res.redirect('/');
             }
 
             const session: Session = this.db.load("session");
+            if (!session) return res.redirect('/error');
+
             const userId = session.userId;
             const userName = session.userName;
 
@@ -504,8 +497,14 @@ export default class {
             const session: Session = this.db.load("session");
             if (session) {
                 await this.db.delete("session");
-                this.client.quit();
+
+                if (this.socket.connected) this.socket.close();
+                this.socket = null;
+
+                if (this.client.isConnected) this.client.quit();
                 this.client = null;
+
+                clearInterval(this.authIntervalId);
             }
 
             res.redirect('/');
@@ -524,11 +523,6 @@ export default class {
 
         server.get('/error', (req, res) => {
             res.render('error');
-        });
-
-        server.get('/failure', (req, res) => {  // if you found this congrats you can now quit the bot whenever you want
-            this.client.quit();
-            res.status(200).json({ text: "ok" });
         });
     }
 
@@ -557,11 +551,14 @@ export default class {
     }
 
     private checkAuth() {
-        setInterval(async () => {
+        return setInterval(async () => {
+            if (this.failure) return;
+
             try {
                 let session: Session = this.db.load("session");
                 await gdreqbot.getUser(session?.secret, require('../../package.json').version);
             } catch {
+                this.logger.warn("Auth failure");
                 this.failure = true;
             }
         }, 5*60*1000); // 5 min

@@ -1,13 +1,9 @@
 import { WebSocket } from "ws";
-import Gdreqbot from "./Bot";
 import Database from "./Database";
 import Logger from "./Logger";
 import { Session } from "../datasets/session";
 import Server from "./Server";
 import superagent from "superagent";
-
-const port = process.env.WS_PORT || 8080;
-const hostname = process.env.HOSTNAME || 'localhost';
 
 export default class {
     ws?: WebSocket;
@@ -55,7 +51,7 @@ export default class {
                     this.server.failure = true;
 
                     try {
-                        await superagent.get(`http://127.0.0.1:${this.server.port}/failure`);  // if you're reading this yes I ran out of ideas
+                        await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
                     } catch (e) {
                         console.error(e);
                     }
@@ -75,9 +71,14 @@ export default class {
                 }
             });
 
-            this.ws.on('close', (code, reason) => {
+            this.ws.on('close', async (code, reason) => {
                 this.connected = false;
                 this.logger.log(`Closing Socket... (${code}|${reason})`);
+                try {
+                    await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
+                } catch (e) {
+                    console.error(e);
+                }
             });
 
             this.ws.on('error', err => {
