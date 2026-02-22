@@ -4,5 +4,6 @@ dist
 tokens*
 data
 reboot.json
+logs
 
 out/

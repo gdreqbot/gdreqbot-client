@@ -12,7 +12,6 @@ class Database {
 
     constructor(filename: string) {
         this.db = new MapDB(filename, { path: DEV ? "." : app.getPath("userData") });
-        //this.db = new MapDB(filename);
         this.logger = new Logger("Database");
     }
 
