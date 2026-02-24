@@ -87,6 +87,18 @@ export default class {
             if (!serverStatus)
                 return res.redirect('/offline');
 
+            let session: Session = this.db.load("session");
+
+            if (session) {
+                try {
+                    let user = await gdreqbot.getUser(session.secret, require('../../package.json').version);
+                    if (user) {
+                        await this.start();
+                        return res.redirect('/dashboard');
+                    }
+                } catch {}
+            }
+
             const redirect = `http://127.0.0.1:${this.port}/auth/callback`;
             const url = `${process.env.URL}/auth?redirect_uri=${encodeURIComponent(redirect)}`;
 
@@ -108,18 +120,7 @@ export default class {
                     secret
                 });
 
-                this.socket = new Socket(this.db, this);
-                try {
-                    await this.socket.connect();
-                } catch (e) {
-                    this.logger.warn(e);
-                }
-
-                this.client = new Gdreqbot(this.db, this.socket);
-                this.client.connect();
-
-                this.authIntervalId = this.checkAuth();
-
+                await this.start();
                 res.redirect('/dashboard');
             } catch (e) {
                 switch (e.message) {
@@ -548,6 +549,21 @@ export default class {
             this.server.close();
             this.server = null;
         }
+    }
+
+    private async start() {
+        this.socket = new Socket(this.db, this);
+        try {
+            await this.socket.connect();
+        } catch (e) {
+            this.logger.warn(e);
+        }
+
+        this.client = new Gdreqbot(this.db, this.socket);
+        this.client.connect();
+
+        this.authIntervalId = this.checkAuth();
+
     }
 
     private checkAuth() {
