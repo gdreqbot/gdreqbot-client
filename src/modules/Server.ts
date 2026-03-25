@@ -93,6 +93,7 @@ export default class {
                 try {
                     let user = await gdreqbot.getUser(session.secret, require('../../package.json').version);
                     if (user) {
+                        console.log("session");
                         await this.start();
                         return res.redirect('/dashboard');
                     }
@@ -506,6 +507,7 @@ export default class {
                 this.client = null;
 
                 clearInterval(this.authIntervalId);
+                console.log("logout");
             }
 
             res.redirect('/');
@@ -524,6 +526,14 @@ export default class {
 
         server.get('/error', (req, res) => {
             res.render('error');
+        });
+
+        server.get('/reconnecting', (req, res) => {
+            res.render('reconnecting');
+        });
+
+        server.get('/status', (req, res) => {
+            res.json({ connected: this.socket.connected });
         });
     }
 

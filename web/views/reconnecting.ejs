@@ -1,0 +1,23 @@
+ <!DOCTYPE html>
+<html>
+
+<body>
+
+<h1>Reconnecting...</h1>
+
+<script>
+    async function pingSocket() {
+        try {
+            let res = await fetch("/status");
+            let status = await res.json();
+
+            if (status.connected)
+                window.location.href = "/dashboard";
+        } catch {}
+    }
+
+    setInterval(pingSocket, 5000);
+</script>
+
+</body>
+</html> 

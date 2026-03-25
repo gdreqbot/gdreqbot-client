@@ -74,11 +74,12 @@ export default class {
             this.ws.on('close', async (code, reason) => {
                 this.connected = false;
                 this.logger.log(`Closing Socket... (${code}|${reason})`);
-                try {
-                    await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
-                } catch (e) {
-                    console.error(e);
-                }
+                this.reconnect();
+                //try {
+                //    await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
+                //} catch (e) {
+                //    console.error(e);
+                //}
             });
 
             this.ws.on('error', err => {
@@ -94,5 +95,13 @@ export default class {
 
     close() {
         this.ws?.close();
+    }
+
+    reconnect() {
+        let attemptConnection = setInterval(async () => {
+            await this.connect();
+            if (this.connected)
+                clearInterval(attemptConnection);
+        }, 2000);
     }
 }
