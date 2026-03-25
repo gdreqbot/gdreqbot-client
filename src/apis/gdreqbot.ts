@@ -39,7 +39,8 @@ export async function getUser(secret: string, version: string): Promise<User> {
         let res = await superagent
             .get(`${process.env.URL}/api/me`)
             .set('Authorization', `Bearer ${secret}`)
-            .set('Version', version);
+            .set('Version', version)
+            .set('Platform', process.platform);
 
         return {
             userId: res.body.userId,
