@@ -46,7 +46,7 @@ export default class {
             });
 
             this.ws.on('message', async raw => {
-                if (raw.toString() == "failure") {
+                if (raw.toString().startsWith("failure")) {
                     this.logger.error(`Closing due to server failure... (code ${raw.toString().split(":")[1]})`);
                     this.server.failure = true;
 
@@ -76,7 +76,7 @@ export default class {
                 this.logger.log(`Closing Socket... (${code}|${reason})`);
 
                 this.ws = null;
-                this.reconnect();
+                if (!this.server.failure) this.reconnect();
                 //try {
                 //    await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
                 //} catch (e) {
