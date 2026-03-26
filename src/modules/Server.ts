@@ -238,14 +238,14 @@ export default class {
                 let res: CmdResponse | void = await cmd.run(this.client, { channelId: userId } as any, userName, args, { auto: true, silent: sets.silent_mode });
 
                 if (res) {
-                    this.socket.ws.send(
+                    this.socket.send(
                         JSON.stringify({
                             res
                         })
                     );
                 }
             } catch (e) {
-                this.socket.ws.send(
+                this.socket.send(
                     JSON.stringify({
                         res: "generic.cmd_error",
                         data: {

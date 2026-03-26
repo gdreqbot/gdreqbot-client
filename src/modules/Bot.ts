@@ -92,7 +92,7 @@ class Gdreqbot extends ChatClient {
                     let res: Response | void = await this.commands.get("req").run(this, msg, channel, [isId[0], notes.length > 1 ? notes : null], { auto: true, silent: sets.silent_mode });
 
                     if (res) {
-                        this.socket.ws.send(
+                        this.socket.send(
                             JSON.stringify({
                                 res,
                                 msgId: msg.id
@@ -100,7 +100,7 @@ class Gdreqbot extends ChatClient {
                         );
                     }
                 } catch (e) {
-                    this.socket.ws.send(
+                    this.socket.send(
                         JSON.stringify({
                             res: {
                                 path: "generic.cmd_error",
@@ -136,7 +136,7 @@ class Gdreqbot extends ChatClient {
                 let res: Response | void = await cmd.run(this, msg, channel, args, { userPerms, silent: sets.silent_mode });
 
                 if (res) {
-                    this.socket.ws.send(
+                    this.socket.send(
                         JSON.stringify({
                             res,
                             msgId: msg.id
@@ -144,7 +144,7 @@ class Gdreqbot extends ChatClient {
                     );
                 }
             } catch (e) {
-                this.socket.ws.send(
+                this.socket.send(
                     JSON.stringify({
                         res: {
                             path: "generic.cmd_error",

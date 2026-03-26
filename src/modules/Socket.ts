@@ -47,14 +47,14 @@ export default class {
 
             this.ws.on('message', async raw => {
                 if (raw.toString() == "failure") {
-                    this.logger.error("Closing due to server failure...");
+                    this.logger.error(`Closing due to server failure... (code ${raw.toString().split(":")[1]})`);
                     this.server.failure = true;
 
-                    try {
-                        await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
-                    } catch (e) {
-                        console.error(e);
-                    }
+                    //try {
+                    //    await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
+                    //} catch (e) {
+                    //    console.error(e);
+                    //}
                     return;
                 }
 
@@ -74,6 +74,8 @@ export default class {
             this.ws.on('close', async (code, reason) => {
                 this.connected = false;
                 this.logger.log(`Closing Socket... (${code}|${reason})`);
+
+                this.ws = null;
                 this.reconnect();
                 //try {
                 //    await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
@@ -84,13 +86,22 @@ export default class {
 
             this.ws.on('error', err => {
                 console.error(err);
-                this.logger.error('Error occurred');
+                this.logger.error('Error occurred: ', err);
             });
 
             this.ws.on('ping', () => {
                 this.ws.pong();
             });
         });
+    }
+
+    send(msg: string) {
+        if (this.ws) {
+            this.ws.send(msg);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     close() {
@@ -104,4 +115,9 @@ export default class {
                 clearInterval(attemptConnection);
         }, 2000);
     }
+}
+
+enum FailureCode {
+    JOIN,
+    DUPLICATE
 }
