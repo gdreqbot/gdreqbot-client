@@ -3,7 +3,9 @@ import Database from "./Database";
 import Logger from "./Logger";
 import { Session } from "../datasets/session";
 import Server from "./Server";
-import superagent from "superagent";
+import { promisify } from "util";
+
+const wait = promisify(setTimeout);
 
 export default class {
     ws?: WebSocket;
@@ -11,6 +13,9 @@ export default class {
     logger: Logger;
     server: Server;
     connected = false;
+    reconnecting = false;
+    abort = false;
+    retries = 1;
 
     constructor(db: Database, server: Server) {
         this.db = db;
@@ -23,12 +28,15 @@ export default class {
             const session: Session = this.db.load("session");
             if (!session?.secret) {
                 this.logger.warn("No secret");
-                return reject("No secret");
+                return reject("no_secret");
             }
 
             this.ws = new WebSocket(process.env.WS_URL);
 
             this.ws.on('open', () => {
+                this.reconnecting = false;
+                this.retries = 1;
+
                 const session: Session = this.db.load("session");
                 if (!session?.secret) {
                     this.logger.warn("No secret");
@@ -40,7 +48,8 @@ export default class {
                 this.ws.send(
                     JSON.stringify({
                         type: "auth",
-                        secret: session.secret
+                        secret: session.secret,
+                        version: `${process.platform}:${require('../../package.json').version}`
                     })
                 );
             });
@@ -55,7 +64,7 @@ export default class {
                     //} catch (e) {
                     //    console.error(e);
                     //}
-                    return;
+                    return reject(`failure:${raw.toString().split(":")[1]}}`);
                 }
 
                 const msg = JSON.parse(raw.toString());
@@ -67,7 +76,7 @@ export default class {
                 } else {
                     this.logger.warn("Unauthorized");
                     this.close();
-                    return reject("Unauthorized");
+                    return reject("unauthorized");
                 }
             });
 
@@ -76,7 +85,10 @@ export default class {
                 this.logger.log(`Closing Socket... (${code}|${reason})`);
 
                 this.ws = null;
-                if (!this.server.failure) this.reconnect();
+                if (!this.server.failure) {
+                    this.reconnecting = true;
+                    this.reconnect();
+                }
                 //try {
                 //    await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
                 //} catch (e) {
@@ -85,8 +97,10 @@ export default class {
             });
 
             this.ws.on('error', err => {
-                console.error(err);
-                this.logger.error('Error occurred: ', err);
+                if (!this.reconnecting) {
+                    console.error(err);
+                    this.logger.error('Error occurred: ', err);
+                }
             });
 
             this.ws.on('ping', () => {
@@ -105,15 +119,29 @@ export default class {
     }
 
     close() {
-        this.ws?.close();
+        if (this.ws) {
+            this.ws.close();
+            this.abort = true;
+            this.reconnecting = false;
+            return true;
+        } else {
+            return false;
+        }
     }
 
     reconnect() {
-        let attemptConnection = setInterval(async () => {
-            await this.connect();
-            if (this.connected)
-                clearInterval(attemptConnection);
+        if (this.server.failure || !this.reconnecting) return;
+
+        this.ws = null;
+        this.logger.log(`Trying to reconnect... (${this.retries})`);
+
+        setTimeout(() => {
+            if (this.server.failure || !this.reconnecting || this.connected) return;
+
+            this.connect().catch(() => {});
         }, 2000);
+
+        this.retries++;
     }
 }
 

@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config({ quiet: true });
 
-import express, { NextFunction, Request, Response, Express } from "express";
+import express, { Express } from "express";
 import session from "express-session";
 import bodyParser from "body-parser";
 import { v4 as uuid } from "uuid";
@@ -27,6 +27,7 @@ import Socket from "./Socket";
 import * as gdreqbot from "../apis/gdreqbot";
 
 import { app } from "electron";
+import { on } from "cluster";
 const DEV = !app.isPackaged;
 
 export default class {
@@ -93,11 +94,15 @@ export default class {
                 try {
                     let user = await gdreqbot.getUser(session.secret, require('../../package.json').version);
                     if (user) {
-                        console.log("session");
                         await this.start();
                         return res.redirect('/dashboard');
                     }
-                } catch {}
+                } catch (err) {
+                    //if (err == "Error: Outdated client")
+                    //    return res.redirect('/outdated');
+                    //else
+                        return res.render('error', { err });
+                }
             }
 
             const redirect = `http://127.0.0.1:${this.port}/auth/callback`;
@@ -160,7 +165,7 @@ export default class {
             }
 
             const session: Session = this.db.load("session");
-            if (!session) return res.redirect('/error');
+            if (!session) return res.redirect('error');
 
             const userId = session.userId;
             const userName = session.userName;
@@ -190,7 +195,7 @@ export default class {
             }
 
             const session: Session = this.db.load("session");
-            if (!session) return res.redirect('/error');
+            if (!session) return res.render('error', { err: "no_session"});
 
             const userId = session.userId;
             const userName = session.userName;
@@ -265,7 +270,7 @@ export default class {
             }
 
             const session: Session = this.db.load("session");
-            if (!session) return res.redirect('/error');
+            if (!session) return res.render('error', { err: "no_session" });
 
             const userId = session.userId;
             const userName = session.userName;
@@ -316,7 +321,7 @@ export default class {
             }
 
             const session: Session = this.db.load("session");
-            if (!session) return res.redirect('/error');
+            if (!session) return res.render('error', { err: "no_session" });
 
             const userId = session.userId;
             const userName = session.userName;
@@ -492,6 +497,7 @@ export default class {
         });
 
         server.get('/login', async (req, res) => {
+            this.reset();
             res.render('loading');
         });
 
@@ -522,10 +528,6 @@ export default class {
                 version: require('../../package.json').version,
                 upstream: req.query.upstream
             });
-        });
-
-        server.get('/error', (req, res) => {
-            res.render('error');
         });
 
         server.get('/reconnecting', (req, res) => {
@@ -562,18 +564,36 @@ export default class {
     }
 
     private async start() {
+        //throw "test_err";
         this.socket = new Socket(this.db, this);
         try {
             await this.socket.connect();
+
+            this.client = new Gdreqbot(this.db, this);
+            this.client.connect();
+
+            this.authIntervalId = this.checkAuth();
         } catch (e) {
-            this.logger.warn(e);
+            this.logger.error("Socket rejected promise: ", e);
+            throw e;
+        }
+    }
+
+    private reset() {
+        if (this.socket) {
+            this.socket.close();
+            this.socket = null;
         }
 
-        this.client = new Gdreqbot(this.db, this.socket);
-        this.client.connect();
+        if (this.client) {
+            this.client.quit();
+            this.client = null;
+        }
 
-        this.authIntervalId = this.checkAuth();
+        clearInterval(this.authIntervalId);
+        this.authIntervalId = null;
 
+        this.failure = false;
     }
 
     private checkAuth() {
@@ -658,6 +678,30 @@ export default class {
     private normalize(str: string) {
         let normalized = str.toLowerCase();
         return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    }
+
+    // client & socket methods
+
+    socketSend(msg: string) {
+        return this.socket?.send(msg);
+    }
+
+    clientConnect() {
+        if (this.client && !this.client.isConnected) {
+            this.client.connect();
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    clientDisconnect() {
+        if (this.client && this.client.isConnected) {
+            this.client.quit();
+            return true;
+        } else {
+            return false;
+        }
     }
 }
 
