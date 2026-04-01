@@ -94,6 +94,7 @@ class Gdreqbot extends ChatClient {
                     if (res) {
                         this.server.socketSend(
                             JSON.stringify({
+                                type: "cmd",
                                 res,
                                 msgId: msg.id
                             })
@@ -102,6 +103,7 @@ class Gdreqbot extends ChatClient {
                 } catch (e) {
                     this.server.socketSend(
                         JSON.stringify({
+                            type: "cmd",
                             res: {
                                 path: "generic.cmd_error",
                                 data: {
@@ -138,6 +140,7 @@ class Gdreqbot extends ChatClient {
                 if (res) {
                     this.server.socketSend(
                         JSON.stringify({
+                            type: "cmd",
                             res,
                             msgId: msg.id
                         })
@@ -146,6 +149,7 @@ class Gdreqbot extends ChatClient {
             } catch (e) {
                 this.server.socketSend(
                     JSON.stringify({
+                        type: "cmd",
                         res: {
                             path: "generic.cmd_error",
                             data: {
