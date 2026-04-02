@@ -23,11 +23,11 @@ import { Server } from "http";
 import { Session } from "../datasets/session";
 import Logger from "./Logger";
 import Database from "./Database";
-import Socket from "./Socket";
+import Socket, { FailureCode } from "./Socket";
 import * as gdreqbot from "../apis/gdreqbot";
+import core from "../core";
 
 import { app } from "electron";
-import { on } from "cluster";
 const DEV = !app.isPackaged;
 
 export default class {
@@ -39,6 +39,7 @@ export default class {
     logger: Logger;
     db: Database;
     failure = false;
+    failureRaw: string;
     authIntervalId: ReturnType<typeof setInterval>;
 
     constructor(db: Database) {
@@ -84,29 +85,39 @@ export default class {
         });
 
         server.get('/auth', async (req, res, next) => {
-            let serverStatus = await gdreqbot.checkServer(this.logger);
-            if (!serverStatus)
-                return res.redirect('/offline');
+            await gdreqbot.checkServer(this.logger);
 
             let session: Session = this.db.load("session");
 
-            if (session) {
-                try {
-                    let user = await gdreqbot.getUser(session.secret, require('../../package.json').version);
-                    if (user) {
-                        await this.start();
-                        return res.redirect('/dashboard');
-                    }
-                } catch (err) {
-                    //if (err == "Error: Outdated client")
-                    //    return res.redirect('/outdated');
-                    //else
-                        return res.render('error', { err });
-                }
-            }
-
             const redirect = `http://127.0.0.1:${this.port}/auth/callback`;
             const url = `${process.env.URL}/auth?redirect_uri=${encodeURIComponent(redirect)}`;
+
+            if (session) {
+                try {
+                    await this.start();
+                    return res.redirect('/dashboard');
+                } catch (err) {
+                    if (err.startsWith("failure")) {
+                        let failure = this.socket.parseFailure(err);
+
+                        switch (failure.code) {
+                            case FailureCode.OUTDATED:
+                                return res.render('outdated', {
+                                    version: require('../../package.json').version,
+                                    upstream: failure.upstream
+                                });
+
+                            case FailureCode.UNAUTHORIZED:
+                                return res.redirect(url);
+
+                            default:
+                                return res.render('error', { err });
+                        }
+                    }
+
+                    return res.render('error', { err });
+                }
+            }
 
             res.redirect(url);
         });
@@ -156,14 +167,25 @@ export default class {
         });
 
         server.get('/dashboard', (req, res) => {
+            if (this.failure) {
+                let failure = this.socket.parseFailure(this.failureRaw);
+
+                switch (failure.code) {
+                    case FailureCode.OUTDATED:
+                        return res.render('outdated', {
+                            version: require('../../package.json').version,
+                            upstream: failure.upstream
+                        });
+
+                    default:
+                        return res.render('error', { err: this.failureRaw });
+                }
+            }
+
             res.redirect('/dashboard/requests');
         });
 
         server.get('/dashboard/requests', /* this.checkAuth, */async (req, res) => {
-            if (this.failure || !this.socket?.connected) {
-                return res.redirect('/');
-            }
-
             const session: Session = this.db.load("session");
             if (!session) return res.redirect('error');
 
@@ -190,10 +212,6 @@ export default class {
         });
 
         server.post('/dashboard/requests', multer().none(), async (req, res) => {
-            if (this.failure || !this.socket?.connected) {
-                return res.redirect('/');
-            }
-
             const session: Session = this.db.load("session");
             if (!session) return res.render('error', { err: "no_session"});
 
@@ -245,6 +263,7 @@ export default class {
                 if (res) {
                     this.socket.send(
                         JSON.stringify({
+                            type: "cmd",
                             res
                         })
                     );
@@ -252,6 +271,7 @@ export default class {
             } catch (e) {
                 this.socket.send(
                     JSON.stringify({
+                        type: "cmd",
                         res: "generic.cmd_error",
                         data: {
                             cmd: cmd.info.name
@@ -265,10 +285,6 @@ export default class {
         });
 
         server.get('/dashboard/configuration', async (req, res) => {
-            if (this.failure || !this.socket?.connected) {
-                return res.redirect('/');
-            }
-
             const session: Session = this.db.load("session");
             if (!session) return res.render('error', { err: "no_session" });
 
@@ -316,14 +332,9 @@ export default class {
         });
 
         server.post('/dashboard/configuration', multer().none(), async (req, res) => {
-            if (this.failure || !this.socket?.connected) {
-                return res.redirect('/');
-            }
-
             const session: Session = this.db.load("session");
             if (!session) return res.render('error', { err: "no_session" });
 
-            const userId = session.userId;
             const userName = session.userName;
 
             switch (req.body.formType) {
@@ -498,7 +509,7 @@ export default class {
 
         server.get('/login', async (req, res) => {
             this.reset();
-            res.render('loading');
+            res.render('loading', { text: "Loading" });
         });
 
         server.get('/logout', async (req, res, next) => {
@@ -513,14 +524,11 @@ export default class {
                 this.client = null;
 
                 clearInterval(this.authIntervalId);
-                console.log("logout");
             }
 
-            res.redirect('/');
-        });
+            core.clearData();
 
-        server.get('/offline', (req, res) => {
-            res.render('offline');
+            res.redirect('/');
         });
 
         server.get('/outdated', (req, res) => {
@@ -531,11 +539,14 @@ export default class {
         });
 
         server.get('/reconnecting', (req, res) => {
-            res.render('reconnecting');
+            res.render('loading', { text: "Reconnecting" });
         });
 
         server.get('/status', (req, res) => {
-            res.json({ connected: this.socket.connected });
+            res.json({
+                connected: this.socket.connected,
+                outdated: this.failure && this.socket.parseFailure(this.failureRaw)?.code == FailureCode.OUTDATED ? true : false
+            });
         });
     }
 
@@ -564,17 +575,15 @@ export default class {
     }
 
     private async start() {
-        //throw "test_err";
         this.socket = new Socket(this.db, this);
         try {
-            await this.socket.connect();
-
             this.client = new Gdreqbot(this.db, this);
-            this.client.connect();
+
+            await this.socket.connect();
 
             this.authIntervalId = this.checkAuth();
         } catch (e) {
-            this.logger.error("Socket rejected promise: ", e);
+            this.logger.error("Socket rejected promise:", e);
             throw e;
         }
     }
@@ -689,6 +698,7 @@ export default class {
     clientConnect() {
         if (this.client && !this.client.isConnected) {
             this.client.connect();
+            this.logger.log("Client connected.");
             return true;
         } else {
             return false;
@@ -698,6 +708,7 @@ export default class {
     clientDisconnect() {
         if (this.client && this.client.isConnected) {
             this.client.quit();
+            this.logger.log("Client disconnected.");
             return true;
         } else {
             return false;

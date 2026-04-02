@@ -56,15 +56,12 @@ export default class {
 
             this.ws.on('message', async raw => {
                 if (raw.toString().startsWith("failure")) {
-                    this.logger.error(`Closing due to server failure... (code ${raw.toString().split(":")[1]})`);
+                    let failure = this.parseFailure(raw.toString());
+                    this.logger.error(`Closing due to server failure... (code ${failure.code})`);
                     this.server.failure = true;
+                    this.server.failureRaw = failure.raw;
 
-                    //try {
-                    //    await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
-                    //} catch (e) {
-                    //    console.error(e);
-                    //}
-                    return reject(`failure:${raw.toString().split(":")[1]}}`);
+                    return reject(failure.raw);
                 }
 
                 const msg = JSON.parse(raw.toString());
@@ -72,6 +69,7 @@ export default class {
                 if (msg.type == "auth_ok") {
                     this.logger.log("Server authorized");
                     this.server.failure = false;
+                    this.server.clientConnect();
                     resolve();
                 } else {
                     this.logger.warn("Unauthorized");
@@ -83,17 +81,13 @@ export default class {
             this.ws.on('close', async (code, reason) => {
                 this.connected = false;
                 this.logger.log(`Closing Socket... (${code}|${reason})`);
+                this.server.clientDisconnect();
 
                 this.ws = null;
-                if (!this.server.failure) {
+                if (!this.server.failure && !this.abort) {
                     this.reconnecting = true;
                     this.reconnect();
                 }
-                //try {
-                //    await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
-                //} catch (e) {
-                //    console.error(e);
-                //}
             });
 
             this.ws.on('error', err => {
@@ -139,13 +133,32 @@ export default class {
             if (this.server.failure || !this.reconnecting || this.connected) return;
 
             this.connect().catch(() => {});
-        }, 2000);
+        }, 1000);
 
         this.retries++;
     }
+
+    parseFailure(msg: string): Failure {
+        let parts = msg.split(":");
+        return {
+            code: parseInt(parts[1]),
+            raw: msg,
+            upstream: parts[2] ?? null
+        };
+    }
 }
 
-enum FailureCode {
+interface Failure {
+    code: FailureCode;
+    raw: string;
+    upstream?: string;
+}
+
+export enum FailureCode {
     JOIN,
-    DUPLICATE
+    DUPLICATE,
+    OUTDATED,
+    NO_SECRET,
+    UNAUTHORIZED,
+    BLACKLISTED
 }
