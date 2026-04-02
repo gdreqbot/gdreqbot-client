@@ -1,12 +1,52 @@
- <!DOCTYPE html>
-<html>
-<body>
+<%- include('components/header') %>
+    <section class="section">
+        <div class="container">
+            <h1 class="title"><%= text %>.</h1>
+            <hr>
+            <div id="help" style="visibility: hidden">
+                <p class="subtitle">Servers offline?</p>
+                <p>Check if the website is up: <a href="https://gdreqbot.ddns.net" target="_blank">https://gdreqbot.ddns.net</a></p>
+                <p>Or join the Discord support server for updates:</p>
+                <br>
+                <a href="https://discord.gg/gzeKZJnB2B" class="button" target="_blank">
+                    <span class="icon has-text-info">
+                        <i class="fab fa-discord"></i>
+                    </span>
+                    <span>Discord</span>
+                </a>
+                </div>
+        </div>
 
-<h1>Loading...</h1>
+        <script>
+            let text = document.querySelector('.title');
+            let help = document.getElementById('help');
+            let type = "<%= text %>";
+            let dots = 1;
+            let retries = 0;
 
-<script>
-    window.location.href = '/auth'
-</script>
+            setInterval(() => {
+                dots = (dots % 3) + 1;
+                text.textContent = `${type}${".".repeat(dots)}`;
+                retries++;
 
-</body>
-</html> 
+                if (retries > 8 && help.style.visibility == "hidden")
+                    help.style.visibility = "visible";
+            }, 500);
+
+            if (type == "Loading") {
+                window.location.href = '/auth';
+            } else {
+                async function pingSocket() {
+                    try {
+                        let res = await fetch("/status");
+                        let status = await res.json();
+
+                        if (status.connected || status.outdated)
+                            window.location.href = "/dashboard";
+                    } catch {}
+                }
+
+                setInterval(pingSocket, 2000);
+            }
+        </script>
+    </section>

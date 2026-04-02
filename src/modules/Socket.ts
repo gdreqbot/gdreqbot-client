@@ -3,7 +3,9 @@ import Database from "./Database";
 import Logger from "./Logger";
 import { Session } from "../datasets/session";
 import Server from "./Server";
-import superagent from "superagent";
+import { promisify } from "util";
+
+const wait = promisify(setTimeout);
 
 export default class {
     ws?: WebSocket;
@@ -11,6 +13,9 @@ export default class {
     logger: Logger;
     server: Server;
     connected = false;
+    reconnecting = false;
+    abort = false;
+    retries = 1;
 
     constructor(db: Database, server: Server) {
         this.db = db;
@@ -23,12 +28,15 @@ export default class {
             const session: Session = this.db.load("session");
             if (!session?.secret) {
                 this.logger.warn("No secret");
-                return reject("No secret");
+                return reject("no_secret");
             }
 
             this.ws = new WebSocket(process.env.WS_URL);
 
             this.ws.on('open', () => {
+                this.reconnecting = false;
+                this.retries = 1;
+
                 const session: Session = this.db.load("session");
                 if (!session?.secret) {
                     this.logger.warn("No secret");
@@ -40,22 +48,20 @@ export default class {
                 this.ws.send(
                     JSON.stringify({
                         type: "auth",
-                        secret: session.secret
+                        secret: session.secret,
+                        version: `${process.platform}:${require('../../package.json').version}`
                     })
                 );
             });
 
             this.ws.on('message', async raw => {
-                if (raw.toString() == "failure") {
-                    this.logger.error("Closing due to server failure...");
+                if (raw.toString().startsWith("failure")) {
+                    let failure = this.parseFailure(raw.toString());
+                    this.logger.error(`Closing due to server failure... (code ${failure.code})`);
                     this.server.failure = true;
+                    this.server.failureRaw = failure.raw;
 
-                    try {
-                        await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
-                    } catch (e) {
-                        console.error(e);
-                    }
-                    return;
+                    return reject(failure.raw);
                 }
 
                 const msg = JSON.parse(raw.toString());
@@ -63,27 +69,32 @@ export default class {
                 if (msg.type == "auth_ok") {
                     this.logger.log("Server authorized");
                     this.server.failure = false;
+                    this.server.clientConnect();
                     resolve();
                 } else {
                     this.logger.warn("Unauthorized");
                     this.close();
-                    return reject("Unauthorized");
+                    return reject("unauthorized");
                 }
             });
 
             this.ws.on('close', async (code, reason) => {
                 this.connected = false;
                 this.logger.log(`Closing Socket... (${code}|${reason})`);
-                try {
-                    await superagent.get(`http://127.0.0.1:${this.server.port}/logout`);  // if you're reading this yes I ran out of ideas
-                } catch (e) {
-                    console.error(e);
+                this.server.clientDisconnect();
+
+                this.ws = null;
+                if (!this.server.failure && !this.abort) {
+                    this.reconnecting = true;
+                    this.reconnect();
                 }
             });
 
             this.ws.on('error', err => {
-                console.error(err);
-                this.logger.error('Error occurred');
+                if (!this.reconnecting) {
+                    console.error(err);
+                    this.logger.error('Error occurred: ', err);
+                }
             });
 
             this.ws.on('ping', () => {
@@ -92,7 +103,62 @@ export default class {
         });
     }
 
-    close() {
-        this.ws?.close();
+    send(msg: string) {
+        if (this.ws) {
+            this.ws.send(msg);
+            return true;
+        } else {
+            return false;
+        }
     }
+
+    close() {
+        if (this.ws) {
+            this.ws.close();
+            this.abort = true;
+            this.reconnecting = false;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    reconnect() {
+        if (this.server.failure || !this.reconnecting) return;
+
+        this.ws = null;
+        this.logger.log(`Trying to reconnect... (${this.retries})`);
+
+        setTimeout(() => {
+            if (this.server.failure || !this.reconnecting || this.connected) return;
+
+            this.connect().catch(() => {});
+        }, 1000);
+
+        this.retries++;
+    }
+
+    parseFailure(msg: string): Failure {
+        let parts = msg.split(":");
+        return {
+            code: parseInt(parts[1]),
+            raw: msg,
+            upstream: parts[2] ?? null
+        };
+    }
+}
+
+interface Failure {
+    code: FailureCode;
+    raw: string;
+    upstream?: string;
+}
+
+export enum FailureCode {
+    JOIN,
+    DUPLICATE,
+    OUTDATED,
+    NO_SECRET,
+    UNAUTHORIZED,
+    BLACKLISTED
 }

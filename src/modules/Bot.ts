@@ -12,7 +12,7 @@ import { Blacklist } from "../datasets/blacklist";
 import { Settings } from "../datasets/settings";
 import { Perm } from "../datasets/perms";
 import { Session } from "../datasets/session";
-import Socket from "./Socket";
+import Server from "../modules/Server";
 import { getBlacklist } from "../apis/gdreqbot";
 
 import { app } from "electron";
@@ -27,9 +27,9 @@ class Gdreqbot extends ChatClient {
     db: Database;
     req: Request;
     config: typeof config;
-    socket: Socket;
+    server: Server;
 
-    constructor(db: Database, socket: Socket, options?: ChatClientOptions) { 
+    constructor(db: Database, server: Server, options?: ChatClientOptions) { 
         const session: Session = db.load("session");
         if (!session?.secret)
             throw new Error('No session secret');
@@ -46,7 +46,7 @@ class Gdreqbot extends ChatClient {
         this.db = db;
         this.req = new Request();
         this.config = config;
-        this.socket = socket;
+        this.server = server;
 
         this.loadCommands();
 
@@ -92,16 +92,18 @@ class Gdreqbot extends ChatClient {
                     let res: Response | void = await this.commands.get("req").run(this, msg, channel, [isId[0], notes.length > 1 ? notes : null], { auto: true, silent: sets.silent_mode });
 
                     if (res) {
-                        this.socket.ws.send(
+                        this.server.socketSend(
                             JSON.stringify({
+                                type: "cmd",
                                 res,
                                 msgId: msg.id
                             })
                         );
                     }
                 } catch (e) {
-                    this.socket.ws.send(
+                    this.server.socketSend(
                         JSON.stringify({
+                            type: "cmd",
                             res: {
                                 path: "generic.cmd_error",
                                 data: {
@@ -136,16 +138,18 @@ class Gdreqbot extends ChatClient {
                 let res: Response | void = await cmd.run(this, msg, channel, args, { userPerms, silent: sets.silent_mode });
 
                 if (res) {
-                    this.socket.ws.send(
+                    this.server.socketSend(
                         JSON.stringify({
+                            type: "cmd",
                             res,
                             msgId: msg.id
                         })
                     );
                 }
             } catch (e) {
-                this.socket.ws.send(
+                this.server.socketSend(
                     JSON.stringify({
+                        type: "cmd",
                         res: {
                             path: "generic.cmd_error",
                             data: {
