@@ -92,7 +92,7 @@ export default class {
             const redirect = `http://127.0.0.1:${this.port}/auth/callback`;
             const url = `${process.env.URL}/auth?redirect_uri=${encodeURIComponent(redirect)}`;
 
-            if (session) {
+            if (session?.secret) {
                 try {
                     await this.start();
                     return res.redirect('/dashboard');
