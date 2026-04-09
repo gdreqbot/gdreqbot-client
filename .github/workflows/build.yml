@@ -18,6 +18,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Write .env
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
