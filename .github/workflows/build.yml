@@ -25,7 +25,8 @@ jobs:
 
       - name: Install dependencies
         uses: borales/actions-yarn
-        run: yarn install
+        with:
+          cmd: install
 
       # Linux-specific deps (for .deb builds)
       - name: Install Linux build deps
