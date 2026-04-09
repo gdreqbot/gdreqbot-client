@@ -28,6 +28,9 @@ jobs:
         with:
           cmd: install
 
+      - name: Build TypeScript
+        run: yarn build
+
       # Linux-specific deps (for .deb builds)
       - name: Install Linux build deps
         if: matrix.os == 'ubuntu-latest'
