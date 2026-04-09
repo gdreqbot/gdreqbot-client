@@ -44,6 +44,14 @@ jobs:
       - name: Make distributables
         run: yarn make
 
+      - name: Make distributable (macOS Universal)
+        if: matrix.os == 'macos-latest'
+        run: yarn make -- --arch=universal
+
+      - name: Make distributable (linux portable)
+        if: matrix.os == 'ubuntu-latest'
+        run: yarn package
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
