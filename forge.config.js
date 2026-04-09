@@ -10,7 +10,10 @@ module.exports = {
       join(__dirname, "./.env"),
       join(__dirname, "./web"),
       join(__dirname, "./dist")
-    ]
+    ],
+    osxUniversal: {
+      x64ArchFiles: "*"
+    }
   },
   rebuildConfig: {},
   makers: [
