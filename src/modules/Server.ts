@@ -97,7 +97,7 @@ export default class {
                     await this.start();
                     return res.redirect('/dashboard');
                 } catch (err) {
-                    if (err.startsWith("failure")) {
+                    if (typeof err == 'string' && err.startsWith("failure")) {
                         let failure = this.socket.parseFailure(err);
 
                         switch (failure.code) {

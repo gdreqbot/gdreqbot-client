@@ -45,13 +45,15 @@ jobs:
         if: matrix.os != 'macos-latest'
         run: yarn make
 
-      - name: Make distributable (macOS Universal)
+      - name: Make distributable (macOS x64)
         if: matrix.os == 'macos-latest'
-        run: |
-          rm -rf out
-          yarn make -- --arch=universal --platform=darwin
+        run: yarn make -- --arch=x64 --platform=darwin
 
-      - name: Make distributable (linux portable)
+      - name: Make distributable (macOS arm64)
+        if: matrix.os == 'macos-latest'
+        run: yarn make -- --arch=arm64 --platform=darwin
+
+      - name: Package (linux portable)
         if: matrix.os == 'ubuntu-latest'
         run: yarn package
 
