@@ -46,7 +46,7 @@ jobs:
 
       - name: Make distributable (macOS Universal)
         if: matrix.os == 'macos-latest'
-        run: yarn make -- --arch=universal
+        run: yarn make -- --arch=universal --platform=darwin
 
       - name: Make distributable (linux portable)
         if: matrix.os == 'ubuntu-latest'
