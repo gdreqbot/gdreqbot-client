@@ -60,7 +60,7 @@ jobs:
           for dir in *linux*; do
             tar -czf "$dir.tar.gz" "$dir"
           done
-          mv *linux* make/
+          mv *linux*.tar.gz make/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
