@@ -15,9 +15,7 @@ import { Session } from "../datasets/session";
 import Server from "../modules/Server";
 import { getBlacklist } from "../apis/gdreqbot";
 
-import { app } from "electron";
 import { join } from "path";
-const DEV = !app.isPackaged;
 
 class Gdreqbot extends ChatClient {
     commands: Map<string, BaseCommand>;
@@ -62,7 +60,7 @@ class Gdreqbot extends ChatClient {
         });
 
         this.onMessage(async (channel, user, text, msg) => {
-            if (msg.userInfo.userId == config.botId) return;
+            if (msg.userInfo.userId == config.botId || msg.userInfo.badges.has("bot-badge")) return;
 
             let globalBl = await getBlacklist(msg.userInfo.userId, "users");
             if (globalBl) return;
