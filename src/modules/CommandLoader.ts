@@ -36,7 +36,7 @@ class CommandLoader {
         if (!cmd) return cmdName;
 
         client.logger.log(`Unloading command ${cmd.info.name}`);
-        delete require.cache[require.resolve(`./commands/${cmdName}.js`)];
+        delete require.cache[require.resolve(`../commands/${cmdName}.js`)];
         return false;
     }
 }

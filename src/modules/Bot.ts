@@ -165,7 +165,7 @@ class Gdreqbot extends ChatClient {
     }
 
     loadCommands() {
-        const cmdFiles = fs.readdirSync(DEV ? "./dist/commands/" : join(process.resourcesPath, "dist/commands")).filter(f => f.endsWith(".js"));
+        const cmdFiles = fs.readdirSync(join(__dirname, "../commands")).filter(f => f.endsWith(".js"));
 
         for (const file of cmdFiles) {
             const res = this.cmdLoader.load(this, file);
