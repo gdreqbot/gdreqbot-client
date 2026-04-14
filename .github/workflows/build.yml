@@ -41,16 +41,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y fakeroot dpkg
 
-      - name: Clean out
-        run: rm -rf out
-
       - name: Make distributables
         if: matrix.os != 'macos-latest'
         run: yarn make
 
       - name: Make distributable (macOS Universal)
         if: matrix.os == 'macos-latest'
-        run: yarn make -- --arch=universal --platform=darwin
+        run: |
+          rm -rf out
+          yarn make -- --arch=universal --platform=darwin
 
       - name: Make distributable (linux portable)
         if: matrix.os == 'ubuntu-latest'
