@@ -7,6 +7,8 @@ import bodyParser from "body-parser";
 import { v4 as uuid } from "uuid";
 import path from 'path';
 import multer from "multer";
+import fs from "fs";
+import http from "http";
 import "moment-duration-format";
 import Gdreqbot from '../modules/Bot';
 import { User } from "../structs/user";
@@ -547,6 +549,25 @@ export default class {
             res.json({
                 connected: this.socket.connected,
                 outdated: this.failure && this.socket.parseFailure(this.failureRaw)?.code == FailureCode.OUTDATED ? true : false
+            });
+        });
+
+        server.get('/update/download', (req, res) => {
+            const upstream = this.socket.parseFailure(this.failureRaw).upstream;
+            const url = `https://github.com/gdreqbot/gdreqbot-client/releases/download/v${upstream}/gdreqbot-${upstream}.Setup.exe`;
+
+            const file = fs.createWriteStream("update.exe");
+
+            http.get(url, (response) => {
+                response.pipe(file);
+
+                file.on("finish", () => {
+                    file.close(() => this.logger.log(`Downloaded setup version ${upstream}`));
+                    res.json({ success: true });
+                });
+            }).on("error", (err) => {
+                fs.unlink("update.exe", () => this.logger.error(`Failed to download setup version ${upstream}: `, err));
+                res.json({ success: false });
             });
         });
     }
