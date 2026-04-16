@@ -1,9 +1,10 @@
 <%- include('components/header') %>
     <section class="section">
         <div class="container">
-            <h1 class="title"><%= text %>.</h1>
+            <h1 class="title">Downloading.</h1>
             <hr>
-            <div id="help" style="visibility: hidden">
+            <p class="subtitle" id="help" style="visibility: hidden">Please download gdreqbot manually: <a href="https://gdreqbot.ddns.net/download">https://gdreqbot.ddns.net/download</p>
+            <!-- <div id="help" style="visibility: hidden">
                 <p class="subtitle">Servers offline?</p>
                 <p>Check if the website is up: <a href="https://gdreqbot.ddns.net" target="_blank">https://gdreqbot.ddns.net</a></p>
                 <p>Or join the Discord support server for updates:</p>
@@ -14,39 +15,39 @@
                     </span>
                     <span>Discord</span>
                 </a>
-                </div>
+            </div> -->
         </div>
 
         <script>
-            let text = document.querySelector('.title');
+            let title = document.querySelector('.title');
             let help = document.getElementById('help');
-            let type = "<%= text %>";
+            let type = "Downloading";
             let dots = 1;
-            let retries = 0;
+            //let retries = 0;
 
-            setInterval(() => {
+            let intervalId = setInterval(() => {
                 dots = (dots % 3) + 1;
-                text.textContent = `${type}${".".repeat(dots)}`;
-                retries++;
+                title.textContent = `${type}${".".repeat(dots)}`;
+                //retries++;
 
-                if (retries > 8 && help.style.visibility == "hidden")
-                    help.style.visibility = "visible";
+                //if (retries > 8 && help.style.visibility == "hidden")
+                //    help.style.visibility = "visible";
             }, 500);
 
-            if (type == "Loading") {
-                window.location.href = '/auth';
-            } else {
-                async function pingSocket() {
-                    try {
-                        let res = await fetch("/status");
-                        let status = await res.json();
+            async function update() {
+                try {
+                    let dRes = await fetch('/update/download');
+                    if (!dRes.ok) throw "Download failed";
 
-                        if (status.connected || status.outdated)
-                            window.location.href = "/dashboard";
-                    } catch {}
+                    let iRes = await fetch('/update/install');
+                    if (!iRes.ok) throw "Install failed";
+                } catch (err) {
+                    clearInterval(intervalId);
+                    title.textContent = err;
+                    help.style.visibility = "visible";
                 }
-
-                setInterval(pingSocket, 2000);
             }
+
+            update();
         </script>
     </section>

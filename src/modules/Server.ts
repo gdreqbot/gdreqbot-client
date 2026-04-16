@@ -9,6 +9,7 @@ import path from 'path';
 import multer from "multer";
 import fs from "fs";
 import http from "http";
+import { spawn } from "child_process";
 import "moment-duration-format";
 import Gdreqbot from '../modules/Bot';
 import { User } from "../structs/user";
@@ -556,19 +557,29 @@ export default class {
             const upstream = this.socket.parseFailure(this.failureRaw).upstream;
             const url = `https://github.com/gdreqbot/gdreqbot-client/releases/download/v${upstream}/gdreqbot-${upstream}.Setup.exe`;
 
-            const file = fs.createWriteStream("update.exe");
+            const file = fs.createWriteStream(path.join(process.cwd(), "update.exe"));
 
             http.get(url, (response) => {
                 response.pipe(file);
 
                 file.on("finish", () => {
                     file.close(() => this.logger.log(`Downloaded setup version ${upstream}`));
-                    res.json({ success: true });
+                    res.sendStatus(200);
                 });
             }).on("error", (err) => {
                 fs.unlink("update.exe", () => this.logger.error(`Failed to download setup version ${upstream}: `, err));
-                res.json({ success: false });
+                res.sendStatus(500);
             });
+        });
+
+        server.get('/update/install', (req, res) => {
+            spawn(path.join(process.cwd(), "update.exe"), [], {
+                detached: true,
+                stdio: "ignore"
+            }).unref();
+
+            res.sendStatus(200);
+            process.exit();
         });
     }
 
