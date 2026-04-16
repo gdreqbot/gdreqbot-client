@@ -104,11 +104,15 @@ export default class {
                         let failure = this.socket.parseFailure(err);
 
                         switch (failure.code) {
-                            case FailureCode.OUTDATED:
-                                return res.render('outdated', {
-                                    version: require('../../package.json').version,
-                                    upstream: failure.upstream
-                                });
+                            case FailureCode.OUTDATED: {
+                                if (process.env.AUTO_UPDATES == "TRUE")
+                                    return res.render('updating');
+                                else
+                                    return res.render('outdated', {
+                                        version: require('../../package.json').version,
+                                        upstream: failure.upstream
+                                    });
+                            }
 
                             case FailureCode.UNAUTHORIZED:
                                 return res.redirect(url);
@@ -536,10 +540,13 @@ export default class {
         });
 
         server.get('/outdated', (req, res) => {
-            res.render('outdated', {
-                version: require('../../package.json').version,
-                upstream: req.query.upstream
-            });
+            if (process.env.AUTO_UPDATES == "TRUE")
+                return res.render('updating');
+            else
+                res.render('outdated', {
+                    version: require('../../package.json').version,
+                    upstream: req.query.upstream
+                });
         });
 
         server.get('/reconnecting', (req, res) => {
