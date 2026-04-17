@@ -8,7 +8,7 @@ import { v4 as uuid } from "uuid";
 import path from 'path';
 import multer from "multer";
 import fs from "fs";
-import http from "http";
+import { https } from "follow-redirects";
 import { spawn } from "child_process";
 import "moment-duration-format";
 import Gdreqbot from '../modules/Bot';
@@ -179,10 +179,13 @@ export default class {
 
                 switch (failure.code) {
                     case FailureCode.OUTDATED:
-                        return res.render('outdated', {
-                            version: require('../../package.json').version,
-                            upstream: failure.upstream
-                        });
+                        if (process.env.AUTO_UPDATES == "TRUE")
+                            return res.render('updating');
+                        else
+                            return res.render('outdated', {
+                                version: require('../../package.json').version,
+                                upstream: failure.upstream
+                            });
 
                     default:
                         return res.render('error', { err: this.failureRaw });
@@ -564,10 +567,12 @@ export default class {
         server.get('/update/download', (req, res) => {
             const upstream = this.socket.parseFailure(this.failureRaw).upstream;
             const url = `https://github.com/gdreqbot/gdreqbot-client/releases/download/v${upstream}/gdreqbot-${upstream}.Setup.exe`;
+            const fileName = `gdreqbot-${upstream}.Setup.exe`;
 
-            const file = fs.createWriteStream(path.join(process.cwd(), "update.exe"));
+            const file = fs.createWriteStream(path.join(process.cwd(), fileName));
 
-            http.get(url, (response) => {
+            https.get(url, (response) => {
+                console.log(response)
                 response.pipe(file);
 
                 file.on("finish", () => {
@@ -575,13 +580,15 @@ export default class {
                     res.sendStatus(200);
                 });
             }).on("error", (err) => {
-                fs.unlink("update.exe", () => this.logger.error(`Failed to download setup version ${upstream}: `, err));
+                fs.unlink(fileName, () => this.logger.error(`Failed to download setup version ${upstream}: `, err));
                 res.sendStatus(500);
             });
         });
 
         server.get('/update/install', (req, res) => {
-            spawn(path.join(process.cwd(), "update.exe"), [], {
+            const upstream = this.socket.parseFailure(this.failureRaw).upstream;
+
+            spawn(path.join(process.cwd(), `gdreqbot-${upstream}.Setup.exe`), [], {
                 detached: true,
                 stdio: "ignore"
             }).unref();

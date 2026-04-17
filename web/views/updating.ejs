@@ -1,7 +1,7 @@
 <%- include('components/header') %>
     <section class="section">
         <div class="container">
-            <h1 class="title">Downloading.</h1>
+            <h1 class="title">Downloading Update.</h1>
             <hr>
             <p class="subtitle" id="help" style="visibility: hidden">Please download gdreqbot manually: <a href="https://gdreqbot.ddns.net/download">https://gdreqbot.ddns.net/download</p>
             <!-- <div id="help" style="visibility: hidden">
@@ -21,7 +21,7 @@
         <script>
             let title = document.querySelector('.title');
             let help = document.getElementById('help');
-            let type = "Downloading";
+            let type = "Downloading Update";
             let dots = 1;
             //let retries = 0;
 
@@ -38,6 +38,8 @@
                 try {
                     let dRes = await fetch('/update/download');
                     if (!dRes.ok) throw "Download failed";
+
+                    type = "Installing Update";
 
                     let iRes = await fetch('/update/install');
                     if (!iRes.ok) throw "Install failed";
