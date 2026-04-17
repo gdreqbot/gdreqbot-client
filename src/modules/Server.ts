@@ -328,7 +328,8 @@ export default class {
                 bl,
                 page: "set",
                 hide_note: sets.hide_note,
-                url: `http://127.0.0.1:${this.port}`
+                url: `http://127.0.0.1:${this.port}`,
+                version: require('../../package.json').version
             });
         });
 
