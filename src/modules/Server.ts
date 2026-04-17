@@ -7,6 +7,9 @@ import bodyParser from "body-parser";
 import { v4 as uuid } from "uuid";
 import path from 'path';
 import multer from "multer";
+import fs from "fs";
+import { https } from "follow-redirects";
+import { spawn } from "child_process";
 import "moment-duration-format";
 import Gdreqbot from '../modules/Bot';
 import { User } from "../structs/user";
@@ -81,7 +84,7 @@ export default class {
         // };
 
         server.get('/', (req, res) => {
-            res.render('index');
+            res.render('index', { version: require('../../package.json').version });
         });
 
         server.get('/auth', async (req, res, next) => {
@@ -101,11 +104,15 @@ export default class {
                         let failure = this.socket.parseFailure(err);
 
                         switch (failure.code) {
-                            case FailureCode.OUTDATED:
-                                return res.render('outdated', {
-                                    version: require('../../package.json').version,
-                                    upstream: failure.upstream
-                                });
+                            case FailureCode.OUTDATED: {
+                                if (process.env.AUTO_UPDATES == "TRUE")
+                                    return res.render('updating');
+                                else
+                                    return res.render('outdated', {
+                                        version: require('../../package.json').version,
+                                        upstream: failure.upstream
+                                    });
+                            }
 
                             case FailureCode.UNAUTHORIZED:
                                 return res.redirect(url);
@@ -172,10 +179,13 @@ export default class {
 
                 switch (failure.code) {
                     case FailureCode.OUTDATED:
-                        return res.render('outdated', {
-                            version: require('../../package.json').version,
-                            upstream: failure.upstream
-                        });
+                        if (process.env.AUTO_UPDATES == "TRUE")
+                            return res.render('updating');
+                        else
+                            return res.render('outdated', {
+                                version: require('../../package.json').version,
+                                upstream: failure.upstream
+                            });
 
                     default:
                         return res.render('error', { err: this.failureRaw });
@@ -534,10 +544,13 @@ export default class {
         });
 
         server.get('/outdated', (req, res) => {
-            res.render('outdated', {
-                version: require('../../package.json').version,
-                upstream: req.query.upstream
-            });
+            if (process.env.AUTO_UPDATES == "TRUE")
+                return res.render('updating');
+            else
+                res.render('outdated', {
+                    version: require('../../package.json').version,
+                    upstream: req.query.upstream
+                });
         });
 
         server.get('/reconnecting', (req, res) => {
@@ -549,6 +562,39 @@ export default class {
                 connected: this.socket.connected,
                 outdated: this.failure && this.socket.parseFailure(this.failureRaw)?.code == FailureCode.OUTDATED ? true : false
             });
+        });
+
+        server.get('/update/download', (req, res) => {
+            const upstream = this.socket.parseFailure(this.failureRaw).upstream;
+            const url = `https://github.com/gdreqbot/gdreqbot-client/releases/download/v${upstream}/gdreqbot-${upstream}.Setup.exe`;
+            const fileName = `gdreqbot-${upstream}.Setup.exe`;
+
+            const file = fs.createWriteStream(path.join(process.cwd(), fileName));
+
+            https.get(url, (response) => {
+                console.log(response)
+                response.pipe(file);
+
+                file.on("finish", () => {
+                    file.close(() => this.logger.log(`Downloaded setup version ${upstream}`));
+                    res.sendStatus(200);
+                });
+            }).on("error", (err) => {
+                fs.unlink(fileName, () => this.logger.error(`Failed to download setup version ${upstream}: `, err));
+                res.sendStatus(500);
+            });
+        });
+
+        server.get('/update/install', (req, res) => {
+            const upstream = this.socket.parseFailure(this.failureRaw).upstream;
+
+            spawn(path.join(process.cwd(), `gdreqbot-${upstream}.Setup.exe`), [], {
+                detached: true,
+                stdio: "ignore"
+            }).unref();
+
+            res.sendStatus(200);
+            process.exit();
         });
     }
 

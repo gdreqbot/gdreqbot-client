@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
 
     steps:
       - name: Checkout repo
@@ -66,4 +66,41 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-artifacts
+          path: out/make/**
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Write .env
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: install
+
+      - name: Build TypeScript
+        run: yarn build
+
+      - name: Build Portable
+        run: yarn make -- --targets=@electron-forge/maker-zip
+
+      - name: Build Installer
+        run: |
+          echo "AUTO_UPDATES=TRUE" >> .env
+          yarn make -- --targets=@electron-forge/maker-squirrel
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-latest-artifacts
           path: out/make/**

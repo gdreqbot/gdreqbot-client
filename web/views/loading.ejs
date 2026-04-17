@@ -14,11 +14,11 @@
                     </span>
                     <span>Discord</span>
                 </a>
-                </div>
+            </div>
         </div>
 
         <script>
-            let text = document.querySelector('.title');
+            let title = document.querySelector('.title');
             let help = document.getElementById('help');
             let type = "<%= text %>";
             let dots = 1;
@@ -26,7 +26,7 @@
 
             setInterval(() => {
                 dots = (dots % 3) + 1;
-                text.textContent = `${type}${".".repeat(dots)}`;
+                title.textContent = `${type}${".".repeat(dots)}`;
                 retries++;
 
                 if (retries > 8 && help.style.visibility == "hidden")
