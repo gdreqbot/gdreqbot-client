@@ -84,7 +84,7 @@ export default class {
         // };
 
         server.get('/', (req, res) => {
-            res.render('index');
+            res.render('index', { version: require('../../package.json').version });
         });
 
         server.get('/auth', async (req, res, next) => {
