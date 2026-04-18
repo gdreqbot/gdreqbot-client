@@ -3,7 +3,21 @@
         <div class="container">
             <h1 class="title">Downloading Update.</h1>
             <hr>
-            <p class="subtitle" id="help" style="visibility: hidden">Please download gdreqbot manually: <a href="https://gdreqbot.ddns.net/download">https://gdreqbot.ddns.net/download</p>
+            <div id="update" style="visibility: hidden">
+                <p class="subtitle">An update has just been downloaded.</p>
+                <p class="subtitle">Please click the button below to install the update and restart gdreqbot:</p>
+                <hr>
+                <button class="button" onclick="install()">
+                    <span class="icon has-text-info">
+                        <i class="fas fa-download"></i>
+                    </span>
+                    <span class="has-text-info">Update and Restart</span>
+                </button>
+            </div>
+            <div id="help" style="visibility: hidden">
+                <p class="subtitle">An update needs to be installed, but auto updating failed.</p>
+                <p class="subtitle">Please download gdreqbot manually: <a href="https://gdreqbot.ddns.net/download">https://gdreqbot.ddns.net/download</p>
+            </div>
             <!-- <div id="help" style="visibility: hidden">
                 <p class="subtitle">Servers offline?</p>
                 <p>Check if the website is up: <a href="https://gdreqbot.ddns.net" target="_blank">https://gdreqbot.ddns.net</a></p>
@@ -21,27 +35,59 @@
         <script>
             let title = document.querySelector('.title');
             let help = document.getElementById('help');
-            let type = "Downloading Update";
+            let update = document.getElementById('update');
+            let action = "Downloading Update";
             let dots = 1;
             //let retries = 0;
 
-            let intervalId = setInterval(() => {
+            function loadingAnim() {
                 dots = (dots % 3) + 1;
-                title.textContent = `${type}${".".repeat(dots)}`;
+                title.textContent = `${action}${".".repeat(dots)}`;
                 //retries++;
 
                 //if (retries > 8 && help.style.visibility == "hidden")
                 //    help.style.visibility = "visible";
-            }, 500);
+            }
 
-            async function update() {
+            let intervalId = setInterval(loadingAnim, 500);
+
+            async function download() {
                 try {
-                    let dRes = await fetch('/update/download');
+                    let dRes = await fetch('/update/download?' + new URLSearchParams({
+                        upstream: "<%= upstream %>"
+                    }).toString());
                     if (!dRes.ok) throw "Download failed";
 
-                    type = "Installing Update";
+                    clearInterval(intervalId);
 
-                    let iRes = await fetch('/update/install');
+                    action = "Update Ready!";
+                    title.textContent = action;
+                    title.classList.add("has-text-success");
+
+                    update.style.visibility = "visible";
+                } catch (err) {
+                    clearInterval(intervalId);
+
+                    title.textContent = err;
+                    title.classList.remove("has-text-success");
+
+                    if (update.style.visibility == "visible") update.style.visibility = "hidden";
+                    help.style.visibility = "visible";
+                }
+            }
+
+            async function install() {
+                try {
+                    action = "Installing Update";
+                    title.textContent = action;
+                    title.classList.remove("has-text-success");
+
+                    intervalId = setInterval(loadingAnim, 500);
+                    update.style.visibility = "hidden";
+
+                    let iRes = await fetch('/update/install?' + new URLSearchParams({
+                        upstream: "<%= upstream %>"
+                    }).toString());
                     if (!iRes.ok) throw "Install failed";
                 } catch (err) {
                     clearInterval(intervalId);
@@ -50,6 +96,6 @@
                 }
             }
 
-            update();
+            download();
         </script>
     </section>

@@ -106,7 +106,9 @@ export default class {
                         switch (failure.code) {
                             case FailureCode.OUTDATED: {
                                 if (process.env.AUTO_UPDATES == "TRUE")
-                                    return res.render('updating');
+                                    return res.render('updating', {
+                                        upstream: failure.upstream
+                                    });
                                 else
                                     return res.render('outdated', {
                                         version: require('../../package.json').version,
@@ -180,7 +182,9 @@ export default class {
                 switch (failure.code) {
                     case FailureCode.OUTDATED:
                         if (process.env.AUTO_UPDATES == "TRUE")
-                            return res.render('updating');
+                            return res.render('updating', {
+                                upstream: failure.upstream
+                            });
                         else
                             return res.render('outdated', {
                                 version: require('../../package.json').version,
@@ -545,7 +549,9 @@ export default class {
 
         server.get('/outdated', (req, res) => {
             if (process.env.AUTO_UPDATES == "TRUE")
-                return res.render('updating');
+                return res.render('updating', {
+                    upstream: req.query.upstream
+                });
             else
                 res.render('outdated', {
                     version: require('../../package.json').version,
@@ -565,14 +571,13 @@ export default class {
         });
 
         server.get('/update/download', (req, res) => {
-            const upstream = this.socket.parseFailure(this.failureRaw).upstream;
+            const upstream = req.query.upstream;
             const url = `https://github.com/gdreqbot/gdreqbot-client/releases/download/v${upstream}/gdreqbot-${upstream}.Setup.exe`;
             const fileName = `gdreqbot-${upstream}.Setup.exe`;
 
             const file = fs.createWriteStream(path.join(process.cwd(), fileName));
 
             https.get(url, (response) => {
-                console.log(response)
                 response.pipe(file);
 
                 file.on("finish", () => {
@@ -586,7 +591,7 @@ export default class {
         });
 
         server.get('/update/install', (req, res) => {
-            const upstream = this.socket.parseFailure(this.failureRaw).upstream;
+            const upstream = req.query.upstream;
 
             spawn(path.join(process.cwd(), `gdreqbot-${upstream}.Setup.exe`), [], {
                 detached: true,
