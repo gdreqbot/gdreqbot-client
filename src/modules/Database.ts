@@ -16,7 +16,7 @@ class Database {
     }
 
     async init() {
-        let datasets = readdirSync(DEV ? "./dist/datasets/" : join(process.resourcesPath, "./dist/datasets/")).filter(f => f.endsWith(".js"));
+        let datasets = readdirSync(DEV ? "./dist/datasets/" : join(process.resourcesPath, "./datasets/")).filter(f => f.endsWith(".js"));
         for (const dataset of datasets) {
             let path = dataset.split(".")[0];
 
