@@ -1,0 +1,41 @@
+<%- include('../components/header') %>
+<style>
+    img {
+        border-radius: 10px;
+        margin-right: 25px;
+    }
+</style>
+    <section class="section">
+        <div class="container">
+            <h1 class="title">Accounts</h1>
+            <hr>
+            <a href="/auth/twitch" class="button" style="background-color: #a970ff">
+                <span class="icon">
+                    <i class="fas fa-arrow-right"></i>
+                </span>
+                <span><strong>Twitch</strong></span>
+            </a>
+            <br></br>
+            <button class="button is-small" type="submit" disabled>
+                <span class="icon has-text-danger">
+                    <i class="fas fa-arrow-left"></i>
+                </span>
+                <span>Logout</span>
+            </button>
+            <hr>
+            <a href="/auth/yt" class="button" style="background-color: #ff0033">
+                <span class="icon">
+                    <i class="fas fa-arrow-right"></i>
+                </span>
+                <span><strong>YouTube</strong></span>
+            </a>
+            <br></br>
+            <button class="button is-small" type="submit" disabled>
+                <span class="icon has-text-danger">
+                    <i class="fas fa-arrow-left"></i>
+                </span>
+                <span>Logout</span>
+            </button>
+        </div>
+    </section>
+<%- include('components/sidebar') %>

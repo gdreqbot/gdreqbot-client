@@ -210,7 +210,7 @@ export default class {
             let sets: Settings = this.db.load("settings");
             let bl: Blacklist = this.db.load("blacklist");
 
-            res.render('dashboard/requests', {
+            res.render('dashboard/unlogged', {
                 isAuthenticated: true,
                 user: {
                     userId,
@@ -514,6 +514,33 @@ export default class {
             }
 
             res.status(200);
+        });
+
+        server.get('/dashboard/accounts', /* this.checkAuth, */async (req, res) => {
+            const session: Session = this.db.load("session");
+            if (!session) return res.redirect('error');
+
+            const userId = session.userId;
+            const userName = session.userName;
+
+            let levels: LevelData[] = this.db.load("levels").levels;
+            let sets: Settings = this.db.load("settings");
+            let bl: Blacklist = this.db.load("blacklist");
+
+            res.render('dashboard/accounts', {
+                isAuthenticated: true,
+                user: {
+                    userId,
+                    userName
+                },
+                levels,
+                sets,
+                bl,
+                page: "acc",
+                hide_note: sets.hide_note,
+                url: `http://127.0.0.1:${this.port}`,
+                version: require('../../package.json').version
+            });
         });
 
         server.get('/dashboard/hide', multer().none(), async (req, res) => {
