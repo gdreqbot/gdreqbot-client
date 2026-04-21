@@ -87,13 +87,13 @@ export default class {
             res.render('index', { version: require('../../package.json').version });
         });
 
-        server.get('/auth', async (req, res, next) => {
+        server.get('/auth/twitch', async (req, res, next) => {
             await gdreqbot.checkServer(this.logger);
 
             let session: Session = this.db.load("session");
 
-            const redirect = `http://127.0.0.1:${this.port}/auth/callback`;
-            const url = `${process.env.URL}/auth?redirect_uri=${encodeURIComponent(redirect)}`;
+            const redirect = `http://127.0.0.1:${this.port}/auth/twitch/callback`;
+            const url = `${process.env.URL}/auth/twitch?redirect_uri=${encodeURIComponent(redirect)}`;
 
             if (session?.secret) {
                 try {
@@ -131,7 +131,7 @@ export default class {
             res.redirect(url);
         });
 
-        server.get('/auth/callback', async (req, res) => {
+        server.get('/auth/twitch/callback', async (req, res) => {
             const { secret } = req.query;
             if (!secret)
                 return res.status(400).send('Missing secret');
