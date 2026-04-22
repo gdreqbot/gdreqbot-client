@@ -50,6 +50,21 @@ export async function getUser(secret: string, version: string): Promise<User> {
     }
 }
 
+export async function getUpstream(): Promise<ClientVersion> {
+    try {
+        let res = await superagent
+            .get(`${process.env.URL}/api/upstream`)
+            .set('Platform', process.platform);
+
+        return {
+            version: res.body.version,
+            platform: res.body.platform
+        };
+    } catch (e) {
+        throw new Error("Couldn't reach server");
+    }
+}
+
 class APIError extends Error {
     upstream?: string;
     
@@ -58,4 +73,9 @@ class APIError extends Error {
 
         this.upstream = upstream;
     }
+}
+
+interface ClientVersion {
+    version: string;
+    platform: string;
 }

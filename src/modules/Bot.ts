@@ -11,7 +11,7 @@ import PermLevels from "../structs/PermLevels";
 import { Blacklist } from "../datasets/blacklist";
 import { Settings } from "../datasets/settings";
 import { Perm } from "../datasets/perms";
-import { Session } from "../datasets/session";
+import { Session } from "../structs/user";
 import Server from "../modules/Server";
 import { getBlacklist } from "../apis/gdreqbot";
 

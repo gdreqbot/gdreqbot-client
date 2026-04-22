@@ -1,11 +1,9 @@
 import { WebSocket } from "ws";
 import Database from "./Database";
 import Logger from "./Logger";
-import { Session } from "../datasets/session";
+import { Session } from "../structs/user";
 import Server from "./Server";
-import { promisify } from "util";
-
-const wait = promisify(setTimeout);
+import config from "../config";
 
 export default class {
     ws?: WebSocket;
@@ -25,7 +23,7 @@ export default class {
 
     connect(): Promise<void> {
         return new Promise((resolve, reject) => {
-            const session: Session = this.db.load("session");
+            const session: Session = this.db.load("session").twitch;
             if (!session?.secret) {
                 this.logger.warn("No secret");
                 return reject("no_secret");
@@ -37,7 +35,7 @@ export default class {
                 this.reconnecting = false;
                 this.retries = 1;
 
-                const session: Session = this.db.load("session");
+                const session: Session = this.db.load("session").twitch;
                 if (!session?.secret) {
                     this.logger.warn("No secret");
                     return this.close();
@@ -49,7 +47,7 @@ export default class {
                     JSON.stringify({
                         type: "auth",
                         secret: session.secret,
-                        version: `${process.platform}:${require('../../package.json').version}`
+                        version: `${process.platform}:${config.version}`
                     })
                 );
             });

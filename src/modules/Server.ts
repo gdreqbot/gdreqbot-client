@@ -12,7 +12,7 @@ import { https } from "follow-redirects";
 import { spawn } from "child_process";
 import "moment-duration-format";
 import Gdreqbot from '../modules/Bot';
-import { User } from "../structs/user";
+import { Session, User } from "../structs/user";
 import { Settings } from "../datasets/settings";
 import { Perm } from "../datasets/perms";
 import PermLevels from "../structs/PermLevels";
@@ -23,7 +23,7 @@ import { LevelData } from "../datasets/levels";
 import { getLevel } from "../apis/gd";
 import { AddressInfo } from "net";
 import { Server } from "http";
-import { Session } from "../datasets/session";
+import { Sessions } from "../datasets/sessions";
 import Logger from "./Logger";
 import Database from "./Database";
 import Socket, { FailureCode } from "./Socket";
@@ -31,6 +31,7 @@ import * as gdreqbot from "../apis/gdreqbot";
 import core from "../core";
 
 import { app } from "electron";
+import config from "../config";
 const DEV = !app.isPackaged;
 
 export default class {
@@ -84,13 +85,13 @@ export default class {
         // };
 
         server.get('/', (req, res) => {
-            res.render('index', { version: require('../../package.json').version });
+            res.render('index', { version: config.version });
         });
 
         server.get('/auth/twitch', async (req, res, next) => {
             await gdreqbot.checkServer(this.logger);
 
-            let session: Session = this.db.load("session");
+            let session: Session = this.db.load("sessions").twitch;
 
             const redirect = `http://127.0.0.1:${this.port}/auth/twitch/callback`;
             const url = `${process.env.URL}/auth/twitch?redirect_uri=${encodeURIComponent(redirect)}`;
@@ -111,7 +112,7 @@ export default class {
                                     });
                                 else
                                     return res.render('outdated', {
-                                        version: require('../../package.json').version,
+                                        version: config.version,
                                         upstream: failure.upstream
                                     });
                             }
@@ -137,13 +138,16 @@ export default class {
                 return res.status(400).send('Missing secret');
 
             try {
-                let user = await gdreqbot.getUser(secret.toString(), require('../../package.json').version);
+                let user = await gdreqbot.getUser(secret.toString(), config.version);
                 if (!user) return;
 
-                await this.db.save("session", {
-                    userId: user.userId,
-                    userName: user.userName,
-                    secret
+                await this.db.save("sessions", {
+                    twitch: {
+                        userId: user.userId,
+                        userName: user.userName,
+                        platform: "twitch",
+                        secret
+                    }
                 });
 
                 await this.start();
@@ -171,25 +175,57 @@ export default class {
             }
         });
 
+        server.get('/auth/youtube', (req, res) => {
+            const redirect = `http://127.0.0.1:${this.port}/auth/youtube/callback`;
+            const url = `${process.env.URL}/auth/youtube?redirect_uri=${encodeURIComponent(redirect)}`;
+
+            res.redirect(url);
+        });
+
+        server.get('/auth/youtube/callback', (req, res) => {
+            console.log("callback");
+        });
+
         server.get('/auth/error', (req, res) => {
             res.render('autherror');
         });
 
-        server.get('/dashboard', (req, res) => {
+        server.get('/dashboard', async (req, res) => {
+            await gdreqbot.checkServer(this.logger);
+
+            try {
+                let upstream = await gdreqbot.getUpstream();
+
+                if (upstream.version != config.version) {
+                    if (process.env.AUTO_UPDATES == "TRUE")
+                        return res.render('updating', {
+                            upstream: upstream.version
+                        });
+                    else
+                        return res.render('outdated', {
+                            version: config.version,
+                            upstream: upstream.version
+                        });
+                }
+            } catch (e) {
+                this.logger.error(e);
+                return res.render('error', { err: e });
+            }
+
             if (this.failure) {
                 let failure = this.socket.parseFailure(this.failureRaw);
 
                 switch (failure.code) {
-                    case FailureCode.OUTDATED:
-                        if (process.env.AUTO_UPDATES == "TRUE")
-                            return res.render('updating', {
-                                upstream: failure.upstream
-                            });
-                        else
-                            return res.render('outdated', {
-                                version: require('../../package.json').version,
-                                upstream: failure.upstream
-                            });
+                    //case FailureCode.OUTDATED:
+                    //    if (process.env.AUTO_UPDATES == "TRUE")
+                    //        return res.render('updating', {
+                    //            upstream: failure.upstream
+                    //        });
+                    //    else
+                    //        return res.render('outdated', {
+                    //            version: config.version,
+                    //            upstream: failure.upstream
+                    //        });
 
                     default:
                         return res.render('error', { err: this.failureRaw });
@@ -200,7 +236,7 @@ export default class {
         });
 
         server.get('/dashboard/requests', /* this.checkAuth, */async (req, res) => {
-            const session: Session = this.db.load("session");
+            const session: Session = this.db.load("sessions")?.twitch;
             if (!session) return res.redirect('error');
 
             const userId = session.userId;
@@ -222,12 +258,12 @@ export default class {
                 page: "req",
                 hide_note: sets.hide_note,
                 url: `http://127.0.0.1:${this.port}`,
-                version: require('../../package.json').version
+                version: config.version
             });
         });
 
         server.post('/dashboard/requests', multer().none(), async (req, res) => {
-            const session: Session = this.db.load("session");
+            const session: Session = this.db.load("sessions").twitch;
             if (!session) return res.render('error', { err: "no_session"});
 
             const userId = session.userId;
@@ -343,7 +379,7 @@ export default class {
                 page: "set",
                 hide_note: sets.hide_note,
                 url: `http://127.0.0.1:${this.port}`,
-                version: require('../../package.json').version
+                version: config.version
             });
         });
 
@@ -539,7 +575,7 @@ export default class {
                 page: "acc",
                 hide_note: sets.hide_note,
                 url: `http://127.0.0.1:${this.port}`,
-                version: require('../../package.json').version
+                version: config.version
             });
         });
 
@@ -690,8 +726,8 @@ export default class {
             if (this.failure) return;
 
             try {
-                let session: Session = this.db.load("session");
-                await gdreqbot.getUser(session?.secret, require('../../package.json').version);
+                let session: Session = this.db.load("sessions")?.twitch;
+                await gdreqbot.getUser(session?.secret, config.version);
             } catch {
                 this.logger.warn("Auth failure");
                 this.failure = true;
