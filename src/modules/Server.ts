@@ -182,8 +182,47 @@ export default class {
             res.redirect(url);
         });
 
-        server.get('/auth/youtube/callback', (req, res) => {
-            console.log("callback");
+        server.get('/auth/youtube/callback', async (req, res) => {
+            const { secret } = req.query;
+            if (!secret)
+                return res.status(400).send('Missing secret');
+
+            try {
+                let user = await gdreqbot.getUser(secret.toString(), config.version);
+                if (!user) return;
+
+                await this.db.save("sessions", {
+                    youtube: {
+                        userId: user.userId,
+                        userName: user.userName,
+                        platform: "youtube",
+                        secret
+                    }
+                });
+
+                //await this.start();
+                res.redirect('/dashboard');
+            } catch (e) {
+                switch (e.message) {
+                    case "Outdated client": {
+                        this.logger.warn("Outdated client");
+                        res.redirect(`/outdated?upstream=${encodeURIComponent(e.upstream)}`);
+                        break;
+                    }
+
+                    case "Blacklisted": {
+                        this.logger.warn("Blacklisted");
+                        res.redirect('/auth/error');
+                        break;
+                    }
+
+                    default: {
+                        this.logger.warn("Unauthorized");
+                        res.status(401).send(e.message);
+                        break;
+                    }
+                }
+            }
         });
 
         server.get('/auth/error', (req, res) => {
