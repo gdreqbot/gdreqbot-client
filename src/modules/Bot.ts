@@ -17,7 +17,7 @@ import { getBlacklist } from "../apis/gdreqbot";
 
 import { join } from "path";
 
-class Gdreqbot extends ChatClient {
+class Gdreqbot {
     commands: Map<string, BaseCommand>;
     cooldowns: Map<string, Map<string, number>>;
     cmdLoader: CommandLoader;
@@ -26,17 +26,9 @@ class Gdreqbot extends ChatClient {
     req: Request;
     config: typeof config;
     server: Server;
+    twitch: ChatClient;
 
-    constructor(db: Database, server: Server, options?: ChatClientOptions) { 
-        const session: Session = db.load("session");
-        if (!session?.secret)
-            throw new Error('No session secret');
-
-        super({
-            ...options,
-            channels: [session.userName]
-        });
-
+    constructor(db: Database, server: Server) { 
         this.commands = new Map();
         this.cooldowns = new Map();
         this.cmdLoader = new CommandLoader();
@@ -47,19 +39,41 @@ class Gdreqbot extends ChatClient {
         this.server = server;
 
         this.loadCommands();
+    }
 
-        this.onConnect(() => {
+    loadCommands() {
+        const cmdFiles = fs.readdirSync(join(__dirname, "../commands")).filter(f => f.endsWith(".js"));
+
+        for (const file of cmdFiles) {
+            const res = this.cmdLoader.load(this, file);
+            if (res) this.logger.error(res);
+
+            delete require.cache[require.resolve(`../commands/${file}`)];
+        }
+    }
+
+    initTwitch(options?: ChatClientOptions) {
+        const session: Session = this.db.load("session");
+        if (!session?.secret)
+            throw new Error('No session secret');
+
+        this.twitch = new ChatClient({
+            ...options,
+            channels: [session.userName]
+        });
+
+        this.twitch.onConnect(() => {
             this.logger.ready("Ready");
             this.logger.ready(`Joining channel: ${session.userName}`);
         });
 
-        this.onDisconnect(() => this.logger.log("Disconnecting..."));
+        this.twitch.onDisconnect(() => this.logger.log("Disconnecting..."));
 
-        this.onJoinFailure(async (channel, reason) => {
+        this.twitch.onJoinFailure(async (channel, reason) => {
             this.logger.error(`Failed to join channel: ${channel} for reason: ${reason}`);
         });
 
-        this.onMessage(async (channel, user, text, msg) => {
+        this.twitch.onMessage(async (channel, user, text, msg) => {
             if (msg.userInfo.userId == config.botId || msg.userInfo.badges.has("bot-badge")) return;
 
             let globalBl = await getBlacklist(msg.userInfo.userId, "users");
@@ -160,17 +174,6 @@ class Gdreqbot extends ChatClient {
                 this.logger.error(e);
             }
         });
-    }
-
-    loadCommands() {
-        const cmdFiles = fs.readdirSync(join(__dirname, "../commands")).filter(f => f.endsWith(".js"));
-
-        for (const file of cmdFiles) {
-            const res = this.cmdLoader.load(this, file);
-            if (res) this.logger.error(res);
-
-            delete require.cache[require.resolve(`../commands/${file}`)];
-        }
     }
 }
 

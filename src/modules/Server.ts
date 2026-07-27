@@ -627,6 +627,7 @@ export default class {
 
         server.get('/login', async (req, res) => {
             this.reset();
+            this.client = new Gdreqbot(this.db, this);
             res.render('loading', { text: "Loading" });
         });
 
@@ -638,7 +639,7 @@ export default class {
                 if (this.socket.connected) this.socket.close();
                 this.socket = null;
 
-                if (this.client.isConnected) this.client.quit();
+                if (this.client.twitch.isConnected) this.client.twitch.quit();
                 this.client = null;
 
                 clearInterval(this.authIntervalId);
@@ -732,7 +733,7 @@ export default class {
     private async start() {
         this.socket = new Socket(this.db, this);
         try {
-            this.client = new Gdreqbot(this.db, this);
+            this.client.initTwitch();
 
             await this.socket.connect();
 
@@ -750,7 +751,7 @@ export default class {
         }
 
         if (this.client) {
-            this.client.quit();
+            this.client.twitch.quit();
             this.client = null;
         }
 
@@ -851,18 +852,18 @@ export default class {
     }
 
     clientConnect() {
-        if (this.client && !this.client.isConnected) {
-            this.client.connect();
+        if (this.client && !this.client.twitch.isConnected) {
+            this.client.twitch.connect();
             this.logger.log("Client connected.");
             return true;
         } else {
             return false;
         }
     }
-
+    // TODO: integrate yt
     clientDisconnect() {
-        if (this.client && this.client.isConnected) {
-            this.client.quit();
+        if (this.client && this.client.twitch.isConnected) {
+            this.client.twitch.quit();
             this.logger.log("Client disconnected.");
             return true;
         } else {
